@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "FOUNDATIONS.REGULARIZATION",
+  "title": "Regularization & Generalization",
+  "parent": "FOUNDATIONS",
+  "status": "skeleton",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "Techniques to prevent overfitting and ensure the model generalizes beyond training data. Includes explicit methods (dropout, weight decay, L1/L2) and implicit (SGD noise, data augmentation, early stopping). Connects to pruning — regularization-driven sparsity is a production compression technique.",
+  "key_insights": [],
+  "mathematical_core": {
+    "l1": "L_total = L_task + λ Σ|θ_i| — drives weights to zero (sparsity)",
+    "l2": "L_total = L_task + λ Σθ_i² — drives weights to be small (not zero)",
+    "dropout": "During training: randomly zero p fraction of activations. During inference: scale by (1-p).",
+    "weight_decay": "θ_{t+1} = (1-λη)θ_t - η·∇L — shrinks weights each step"
+  },
+  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+  "connections": {
+    "prerequisites": ["FOUNDATIONS.GRADIENT_DESCENT", "FOUNDATIONS.LOSS_FUNCTIONS"],
+    "enables": ["PRODUCTION.PRUNING — L1 regularization creates prunable weights"],
+    "related": ["FOUNDATIONS.BATCHING_SGD — SGD noise is implicit regularization"]
+  },
+  "artifacts": [],
+  "notes": []
+}

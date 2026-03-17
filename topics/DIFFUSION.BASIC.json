@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "DIFFUSION.BASIC",
+  "title": "Diffusion Models",
+  "parent": "DIFFUSION",
+  "status": "skeleton",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "Learn to reverse a gradual noising process. Forward process: add Gaussian noise step by step until data becomes pure noise. Reverse process: learn a neural network to denoise step by step. Generation: start from pure noise, iteratively denoise. Now dominant for image generation (DALL-E, Stable Diffusion, Midjourney).",
+  "key_insights": [
+    "Forward: x_t = √(α_t)·x_{t-1} + √(1-α_t)·ε — gradually add noise over T steps",
+    "Reverse: learn p(x_{t-1}|x_t) — predict slightly less noisy version from current noisy version",
+    "In practice: train a network ε_θ(x_t, t) to predict the NOISE that was added, not the clean image",
+    "Loss: simple MSE between predicted noise and actual noise — much simpler than GAN training",
+    "Transformer connection: the denoising network is often a U-Net or a transformer (DiT = Diffusion Transformer)",
+    "Stable training (unlike GANs), high quality output, controllable generation"
+  ],
+  "mathematical_core": {
+    "forward": "q(x_t|x_{t-1}) = N(√α_t · x_{t-1}, (1-α_t)I)",
+    "reverse": "p_θ(x_{t-1}|x_t) = N(μ_θ(x_t, t), σ²_t I)",
+    "loss": "L = E_{t,x_0,ε}[||ε - ε_θ(x_t, t)||²] — predict the noise",
+    "sampling": "Start x_T ~ N(0,I), iteratively apply reverse process T times to get x_0"
+  },
+  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+  "connections": {
+    "prerequisites": ["FOUNDATIONS.LOSS_FUNCTIONS", "Gaussian distributions"],
+    "enables": ["Image generation", "Text-to-image", "Video generation"],
+    "related": ["GAN.BASIC — predecessor for generation tasks", "AUTOENCODER.VAE — shares the latent space concept (Stable Diffusion uses a VAE encoder)"]
+  },
+  "artifacts": [],
+  "notes": ["Learning plan Week 7 topic"]
+}

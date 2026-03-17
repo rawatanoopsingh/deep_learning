@@ -1,0 +1,120 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "TRANSFORMER.FFN",
+  "title": "Feed-Forward Network",
+  "parent": "TRANSFORMER",
+  "status": "solid",
+  "date_created": "2026-03-15",
+  "date_updated": "2026-03-16",
+
+  "summary": "Position-wise two-layer MLP per token. Expands to $d_{ff}$ (typically $4 d_{\\text{model}}$), applies nonlinearity, compresses back. Attention = structured relational decomposition, FFN = general feature transformation.",
+
+  "key_insights": [
+    "Modern DL = structured decomposition (attention) + general learning (FFN)",
+    "Expand-then-compress: higher dimension allows disentangling features that overlap in $d_{\\text{model}}$",
+    "ReLU creates sparsity (~50% zeros), GELU is smoother, SwiGLU adds gating with 50% more params",
+    "FFN is where factual knowledge is primarily stored in LLMs",
+    "FFN is largest parameter block: $8d^2$ vs attention's $4d^2$ (for $d_{ff} = 4d$)"
+  ],
+
+  "mathematical_core": {
+    "formula": "$$\\text{FFN}(x) = W_2 \\cdot \\sigma(W_1 x + b_1) + b_2$$",
+    "expand": "$[B,n,d] \\times [d, d_{ff}] \\to [B,n,d_{ff}]$",
+    "compress": "$[B,n,d_{ff}] \\times [d_{ff}, d] \\to [B,n,d]$",
+    "parameters": "$W_1 \\in \\mathbb{R}^{d \\times d_{ff}},\\; W_2 \\in \\mathbb{R}^{d_{ff} \\times d},\\; b_1 \\in \\mathbb{R}^{d_{ff}},\\; b_2 \\in \\mathbb{R}^{d}$",
+    "param_count": "$2 d \\cdot d_{ff} + d_{ff} + d \\approx 8d^2$ for $d_{ff} = 4d$"
+  },
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Why expansion into higher dimension helps — separability argument",
+        "steps": [
+          {
+            "name": "Cover's theorem (intuition)",
+            "math": "Points not linearly separable in $d$ dimensions become separable with high probability in $d_{ff} \\gg d$ via nonlinear mapping."
+          },
+          {
+            "name": "Applied to FFN",
+            "math": "Input $x \\in \\mathbb{R}^d$ has entangled features. $W_1$ projects into $\\mathbb{R}^{d_{ff}}$. Nonlinearity $\\sigma$ creates nonlinear feature map. In $4\\times$ larger space, features become separable."
+          },
+          {
+            "name": "Compression as distillation",
+            "math": "$W_2$ projects back to $\\mathbb{R}^d$ — information bottleneck selects which high-dim features matter."
+          }
+        ],
+        "consequence": "Expansion ratio (typically $4\\times$) = disentangling capacity. Larger = more capacity, more parameters."
+      },
+      {
+        "title": "ReLU sparsity analysis",
+        "steps": [
+          {
+            "name": "At initialization",
+            "math": "$W_1 x + b_1$ has zero-mean Gaussian entries (Xavier init). $\\text{ReLU}(z) = \\max(0,z)$ zeros negatives. For symmetric distribution: exactly 50% of $d_{ff}$ activations are zero."
+          },
+          {
+            "name": "Sparsity as feature selection",
+            "math": "Each token $x$ activates a different subset of $d_{ff}$ neurons. This subset = token's 'active feature set'. Different tokens have different active sets."
+          },
+          {
+            "name": "Effective capacity",
+            "math": "50% sparsity: each token uses $\\sim d_{ff}/2 = 2d$ features from pool of $4d$. Expressivity comes from combinatorial selection."
+          }
+        ],
+        "consequence": "ReLU sparsity = feature selection giving each token a different 'view' of expanded space."
+      },
+      {
+        "title": "GELU vs ReLU — smoothness and gradients",
+        "steps": [
+          {
+            "name": "ReLU gradient",
+            "math": "$\\frac{\\partial}{\\partial z}\\text{ReLU}(z) = \\begin{cases} 1 & z > 0 \\\\ 0 & z < 0 \\end{cases}$. Hard threshold → dead neurons."
+          },
+          {
+            "name": "GELU definition",
+            "math": "$\\text{GELU}(x) = x \\cdot \\Phi(x)$ where $\\Phi$ is Gaussian CDF. Approx: $\\text{GELU}(x) \\approx 0.5x(1 + \\tanh[\\sqrt{2/\\pi}(x + 0.044715x^3)])$"
+          },
+          {
+            "name": "GELU gradient",
+            "math": "$\\text{GELU}'(x) = \\Phi(x) + x\\phi(x)$. Always nonzero — no dead neurons. Smooth transition."
+          }
+        ],
+        "consequence": "GELU preserves gradient flow, no dead neurons. Standard in transformers (GPT, BERT)."
+      },
+      {
+        "title": "Position-wise independence",
+        "math": "FFN applies same $W_1, W_2$ to each token independently: $\\text{FFN}(X)[i,:] = \\text{FFN}(X[i,:])$. No interaction between positions.",
+        "consequence": "Token mixing = attention ONLY. FFN transforms each token in isolation. Separation: attention = routing, FFN = transformation."
+      }
+    ]
+  },
+
+  "geometric_properties": [
+    "ReLU creates polyhedral regions — each has a different linear function",
+    "Sparsity ratio: too high ($>90\\%$) = underutilized. Too low ($<20\\%$) = not selective",
+    "FFN output should be in similar region as input (residual will add them)"
+  ],
+  "statistical_properties": [
+    "$\\|\\text{FFN}(x)\\|$ should be comparable to $\\|\\text{attention output}\\|$ — both added via residual",
+    "Monitor pre-activation stats: consistent saturation → gradients vanish through FFN",
+    "Dead neuron count: always-zero neurons = wasted capacity"
+  ],
+  "numerical_properties": [
+    "Dominant cost: $2 \\times O(B n d \\cdot d_{ff})$ FLOPs per block",
+    "When $n < d_{\\text{model}}$: FFN dominates. When $n > d_{\\text{model}}$: attention dominates ($O(n^2)$)",
+    "Memory: $\\approx 8d^2$ params for $d_{ff} = 4d$. For $d = 512$: ~2.1M per block"
+  ],
+
+  "connections": {
+    "prerequisites": ["FOUNDATIONS.ACTIVATIONS", "Matrix multiplication"],
+    "enables": ["TRANSFORMER.ENCODER_DECODER"],
+    "related": [
+      "TRANSFORMER.LAYER_NORM — normalizes before FFN",
+      "TRANSFORMER.RESIDUALS — FFN output added via residual",
+      "PRODUCTION.PRUNING — FFN neurons are pruning candidates"
+    ]
+  },
+
+  "artifacts": [{"ref": "artifacts/docs/transformer_calculations.docx", "section": "Step 10"}],
+  "notes": []
+}

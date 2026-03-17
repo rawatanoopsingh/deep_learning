@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "PRODUCTION.EFFICIENT_ATTENTION",
+  "title": "Efficient Attention Variants",
+  "parent": "PRODUCTION",
+  "status": "skeleton",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "O(n^2) self-attention is the bottleneck for long sequences. Sparse attention (attend to subset of positions), linear attention (kernel approximation to avoid n^2), Flash Attention (hardware-aware exact attention that is faster in practice). Critical for production deployment with long inputs.",
+  "key_insights": [
+    "Standard attention: O(n^2 * d_k) — quadratic in sequence length",
+    "Sparse attention (Longformer, BigBird): attend to local window + global tokens. O(n * w) where w = window size",
+    "Linear attention (Performer, Linformer): approximate softmax(QK^T) via kernel trick. O(n * d_k)",
+    "Flash Attention: not a different algorithm — exact standard attention but with tiling/recomputation to minimize GPU memory transfers. 2-4x faster in practice",
+    "For long sequences (n > 4096), some form of efficient attention is required for practical deployment"
+  ],
+  "mathematical_core": {
+    "standard": "O(n^2 * d_k) compute, O(n^2) memory for attention matrix",
+    "sparse": "O(n * w * d_k) where w = local window size + number of global tokens",
+    "linear": "Attention(Q,K,V) approx phi(Q) * (phi(K)^T * V) — reorder to avoid n^2 matrix. O(n * d_k^2)",
+    "flash": "Exact standard attention. Tiled computation avoids materializing full n^2 matrix in HBM. Same result, faster execution."
+  },
+  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+  "connections": {
+    "prerequisites": ["TRANSFORMER.SELF_ATTENTION"],
+    "enables": ["Long-context applications", "Production deployment with latency constraints"],
+    "related": ["PRODUCTION.PRUNING — complementary optimization", "PRODUCTION.DISTILLATION"]
+  },
+  "artifacts": [],
+  "notes": ["Learning plan Week 4/7 topic. Relevant when sequence length exceeds ~4096 tokens."]
+}

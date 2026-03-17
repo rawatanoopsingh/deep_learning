@@ -1,0 +1,122 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "TRANSFORMER.POSITIONAL_ENCODING",
+  "title": "Positional Encoding",
+  "parent": "TRANSFORMER",
+  "status": "solid",
+  "date_created": "2026-03-15",
+  "date_updated": "2026-03-16",
+
+  "summary": "Self-attention is permutation-invariant, so position must be injected. Sine/cosine at different frequencies create unique position vectors with constant norm, relative position via rotation matrices, and length generalization.",
+
+  "key_insights": [
+    "Attention has no inherent notion of token order — PE is mandatory for sequential data",
+    "Sine/cosine chosen for: unique vectors, relative position via linear combination, length generalization",
+    "Modern architectures often use learned PE — but limited to max training length",
+    "For non-sequential data (tabular, graphs), PE may be unnecessary or harmful"
+  ],
+
+  "mathematical_core": {
+    "formula_even": "$$\\text{PE}(\\text{pos}, 2i) = \\sin\\!\\left(\\frac{\\text{pos}}{10000^{2i/d_{\\text{model}}}}\\right)$$",
+    "formula_odd": "$$\\text{PE}(\\text{pos}, 2i+1) = \\cos\\!\\left(\\frac{\\text{pos}}{10000^{2i/d_{\\text{model}}}}\\right)$$",
+    "combination": "$X = E_{\\text{token}} + \\text{PE}$",
+    "dimensions": "$\\text{PE} \\in \\mathbb{R}^{n \\times d_{\\text{model}}}$, added to $[B, n, d_{\\text{model}}]$",
+    "norm": "$\\|\\text{PE}(\\text{pos})\\| = \\sqrt{d_{\\text{model}}/2}$ for all positions (constant)"
+  },
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Relative position via linear transformation",
+        "steps": [
+          {
+            "name": "Trigonometric identity",
+            "math": "$\\sin(a+b) = \\sin a \\cos b + \\cos a \\sin b$, $\\cos(a+b) = \\cos a \\cos b - \\sin a \\sin b$"
+          },
+          {
+            "name": "Apply to PE",
+            "math": "For frequency $\\omega_i = 1/10000^{2i/d}$: $$\\text{PE}(\\text{pos}+k, 2i) = \\sin(\\omega_i(\\text{pos}+k)) = \\sin(\\omega_i \\cdot \\text{pos})\\cos(\\omega_i k) + \\cos(\\omega_i \\cdot \\text{pos})\\sin(\\omega_i k)$$"
+          },
+          {
+            "name": "Matrix form",
+            "math": "$$\\begin{pmatrix} \\text{PE}(\\text{pos}+k, 2i) \\\\ \\text{PE}(\\text{pos}+k, 2i+1) \\end{pmatrix} = \\underbrace{\\begin{pmatrix} \\cos(\\omega_i k) & \\sin(\\omega_i k) \\\\ -\\sin(\\omega_i k) & \\cos(\\omega_i k) \\end{pmatrix}}_{M_k \\text{ (rotation matrix!)}} \\begin{pmatrix} \\text{PE}(\\text{pos}, 2i) \\\\ \\text{PE}(\\text{pos}, 2i+1) \\end{pmatrix}$$"
+          }
+        ],
+        "consequence": "Relative position offset $k$ is a fixed rotation of $\\text{PE}(\\text{pos})$. Model can learn relative positions through linear operations in Q/K projections."
+      },
+      {
+        "title": "Constant norm proof",
+        "steps": [
+          {
+            "name": "Compute $\\|\\text{PE}(\\text{pos})\\|^2$",
+            "math": "$$\\|\\text{PE}(\\text{pos})\\|^2 = \\sum_i \\left[\\sin^2(\\omega_i \\cdot \\text{pos}) + \\cos^2(\\omega_i \\cdot \\text{pos})\\right] = \\sum_i 1 = \\frac{d_{\\text{model}}}{2}$$"
+          },
+          {
+            "name": "Result",
+            "math": "$\\|\\text{PE}(\\text{pos})\\| = \\sqrt{d_{\\text{model}}/2}$ for ALL positions."
+          }
+        ],
+        "consequence": "No position has a 'louder' encoding. Position information doesn't dominate or get drowned based on sequence location."
+      },
+      {
+        "title": "Dot product between positions",
+        "steps": [
+          {
+            "name": "Compute $\\text{PE}(\\text{pos}_1) \\cdot \\text{PE}(\\text{pos}_2)$",
+            "math": "$$= \\sum_i \\cos(\\omega_i(\\text{pos}_1 - \\text{pos}_2))$$"
+          },
+          {
+            "name": "Key property",
+            "math": "Depends ONLY on the difference $(\\text{pos}_1 - \\text{pos}_2)$, not absolute positions."
+          },
+          {
+            "name": "Smoothness",
+            "math": "Small $|\\Delta|$: $\\cos(\\omega_i \\Delta) \\approx 1$ → high dot product (nearby = similar). Large $|\\Delta|$: cosines oscillate → lower dot product."
+          }
+        ],
+        "consequence": "Adjacent positions similar, distant positions dissimilar. Attention can implement relative position sensitivity."
+      },
+      {
+        "title": "Signal preservation after addition",
+        "steps": [
+          {
+            "name": "Combined embedding",
+            "math": "$X = E_{\\text{token}} + \\text{PE}$. If uncorrelated: $\\|X\\|^2 \\approx \\|E\\|^2 + \\|\\text{PE}\\|^2$"
+          },
+          {
+            "name": "Typical initialization",
+            "math": "$E$ initialized Xavier: $\\text{std} \\approx 1/\\sqrt{d}$, so $\\|E\\| \\approx 1$. But $\\|\\text{PE}\\| = \\sqrt{d/2} \\approx 16$ for $d = 512$. Large ratio!"
+          }
+        ],
+        "consequence": "At init, PE magnitude can dominate content. Some architectures scale embeddings by $\\sqrt{d_{\\text{model}}}$ to balance."
+      }
+    ]
+  },
+
+  "geometric_properties": [
+    "$\\|\\text{PE}(\\text{pos})\\| = \\sqrt{d_{\\text{model}}/2}$ constant across all positions",
+    "Dot product depends only on position DIFFERENCE — translation invariance",
+    "Monitor $\\|\\text{PE}\\|$ vs $\\|E_{\\text{token}}\\|$ — ratio matters for signal preservation"
+  ],
+  "statistical_properties": [
+    "After adding PE, mean and variance of $X$ should be uniform across positions",
+    "If PE shifts the mean significantly, subsequent LayerNorm must compensate"
+  ],
+  "numerical_properties": [
+    "Sine/cosine bounded in $[-1, 1]$ — no overflow risk",
+    "Learned PE: matrix $[n_{\\max}, d_{\\text{model}}]$ — cannot handle $n > n_{\\max}$ at inference",
+    "Low-frequency (high $i$): coarse position. High-frequency (low $i$): fine position."
+  ],
+
+  "connections": {
+    "prerequisites": ["Token embedding", "Trigonometric identities"],
+    "enables": ["TRANSFORMER.ENCODER_DECODER"],
+    "related": [
+      "TRANSFORMER.SELF_ATTENTION — PE needed because attention is permutation-invariant",
+      "Rotary Position Embedding (RoPE) — modern alternative encoding relative position directly in Q/K"
+    ]
+  },
+
+  "artifacts": [{"ref": "artifacts/docs/transformer_calculations.docx", "section": "Step 3"}],
+  "notes": ["Rotation matrix interpretation connects to linear algebra intuition"]
+}

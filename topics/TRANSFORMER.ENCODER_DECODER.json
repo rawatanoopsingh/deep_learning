@@ -1,0 +1,102 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "TRANSFORMER.ENCODER_DECODER",
+  "title": "Encoder-Decoder Structure",
+  "parent": "TRANSFORMER",
+  "status": "exploring",
+  "date_created": "2026-03-15",
+  "date_updated": "2026-03-15",
+
+  "summary": "Full transformer: encoder (N blocks, bidirectional, no mask) produces E_enc. Decoder (N blocks, 3 sub-layers: masked self-attn + cross-attn + FFN) generates output autoregressively. Cross-attention bridges them. Encoder runs once, decoder runs T times at inference.",
+
+  "key_insights": [
+    "Encoder: comprehend input fully (bidirectional). Decoder: generate output correctly (causal)",
+    "Decoder has 3 sub-layers per block vs encoder's 2 — extra is cross-attention",
+    "Same E_enc fed to ALL decoder blocks — each with its own W_K_cross, W_V_cross",
+    "Training: teacher forcing. Inference: autoregressive",
+    "Exposure bias: training sees correct tokens, inference sees own predictions",
+    "Decoder block ~33% more parameters than encoder block"
+  ],
+
+  "mathematical_core": {
+    "encoder_block": "X_out = X_mid + FFN(LN(X_mid)),  where X_mid = X + MultiHead(LN(X))",
+    "decoder_block": "Y_out = Y_mid2 + FFN(LN(Y_mid2)),  where Y_mid2 = Y_mid1 + CrossAttn(LN(Y_mid1), E_enc),  Y_mid1 = Y + MaskedMultiHead(LN(Y))",
+    "cross_attention_bridge": "Q = LN(Y_mid1) · W_Q_cross,  K = E_enc · W_K_cross,  V = E_enc · W_V_cross",
+    "output": "P = softmax(LN(Y_final) · W_vocab),  P ∈ [B, n_tgt, V]"
+  },
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Parameter count comparison",
+        "steps": [
+          {
+            "name": "Encoder block",
+            "math": "Self-attn: 4d² (W_Q,K,V,O). FFN: 2·d·d_ff. LN×2: 4d. Total ≈ 12d² for d_ff=4d."
+          },
+          {
+            "name": "Decoder block",
+            "math": "Self-attn: 4d². Cross-attn: 4d². FFN: 2·d·d_ff. LN×3: 6d. Total ≈ 16d² for d_ff=4d."
+          },
+          {
+            "name": "Ratio",
+            "math": "Decoder/Encoder = 16d²/12d² ≈ 1.33. Decoder has 33% more params per block."
+          },
+          {
+            "name": "Full model (N=6)",
+            "math": "Encoder: 6×12d² = 72d². Decoder: 6×16d² = 96d². Embeddings: V×d (often shared). Total ≈ 168d² + V·d."
+          }
+        ],
+        "consequence": "For d=512: ~44M params (encoder) + ~50M params (decoder) + ~26M (embeddings, V=50k) ≈ 120M total. This is roughly the size of the original transformer."
+      },
+      {
+        "title": "Inference cost analysis — why autoregressive is expensive",
+        "steps": [
+          {
+            "name": "Encoder",
+            "math": "Runs once: O(N · n_src² · d) for self-attention + O(N · n_src · d · d_ff) for FFN."
+          },
+          {
+            "name": "Decoder without KV-cache",
+            "math": "For each new token t: recompute self-attention over all t tokens. Total for T tokens: Σ_{t=1}^{T} O(t² · d) = O(T³ · d). Cubic in output length!"
+          },
+          {
+            "name": "Decoder with KV-cache",
+            "math": "Cache previous K,V for self-attention. Each new token: O(t · d) for self-attention (attend new token to cached keys), O(n_src · d) for cross-attention. Total: O(T² · d + T · n_src · d). Quadratic, not cubic."
+          }
+        ],
+        "consequence": "KV-caching reduces decoder cost from O(T³) to O(T²). For long outputs, this is essential. Cache memory: O(N · T · d) for self-attention + O(N · n_src · d) for cross-attention keys/values."
+      }
+    ]
+  },
+
+  "geometric_properties": [
+    "Encoder and decoder operate in same d_model space but develop different internal geometries",
+    "Cross-attention W_K, W_V projections bridge the two geometries",
+    "Monitor cross-attention entropy: high entropy = decoder can't find relevant encoder info (poor alignment)"
+  ],
+  "statistical_properties": [
+    "Monitor relative magnitudes of three sub-layer deltas: ||self_attn||, ||cross_attn||, ||FFN|| — if one dominates, others may be underutilized",
+    "Cross-attention weight stability during autoregressive generation — early tokens' patterns should remain stable",
+    "Attention to padding/EOS tokens increasing = model 'running out of information'"
+  ],
+  "numerical_properties": [
+    "E_enc memory: B × n_src × d × 4 bytes (stored for entire decoding process)",
+    "KV-cache memory grows linearly with generated length",
+    "For B=32, n_src=512, d=512: E_enc alone = 33.5MB"
+  ],
+
+  "connections": {
+    "prerequisites": ["TRANSFORMER.SELF_ATTENTION", "TRANSFORMER.MULTI_HEAD", "TRANSFORMER.POSITIONAL_ENCODING", "TRANSFORMER.FFN", "TRANSFORMER.LAYER_NORM", "TRANSFORMER.RESIDUALS", "TRANSFORMER.MASKING", "TRANSFORMER.CROSS_ATTENTION"],
+    "enables": ["TRANSFORMER.VARIANTS"],
+    "related": ["TRANSFORMER.TRAINING"]
+  },
+
+  "artifacts": [
+    {"ref": "artifacts/docs/encoder_decoder_structure.docx"},
+    {"ref": "artifacts/diagrams/page1_system_overview.png"},
+    {"ref": "artifacts/diagrams/page2_encoder_block_detail.png"},
+    {"ref": "artifacts/diagrams/page3_decoder_block_detail.png"}
+  ],
+  "notes": []
+}

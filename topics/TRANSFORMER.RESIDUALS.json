@@ -1,0 +1,112 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "TRANSFORMER.RESIDUALS",
+  "title": "Residual Connections",
+  "parent": "TRANSFORMER",
+  "status": "deepened",
+  "date_created": "2026-03-15",
+  "date_updated": "2026-03-16",
+
+  "summary": "Identity shortcut: $X_{\\text{out}} = X + \\text{SubLayer}(X)$. Gradient highway (backward) + forward coupling (early params influence later blocks directly). Residual stream as shared communication bus.",
+
+  "key_insights": [
+    "$X_{\\text{out}} = X + \\Delta X$ — model only learns the delta, not full representation from scratch",
+    "Gradient: $\\partial X_{\\text{out}}/\\partial X$ includes identity $I$ — gradients never vanish completely",
+    "FORWARD COUPLING: early params influence later blocks directly (not through transformation chains)",
+    "Residual stream = running sum: $X_N = X_0 + \\sum_i \\Delta_i$",
+    "What to pass through residual is a design choice: full $X$, gated, projected, or partial"
+  ],
+
+  "mathematical_core": {
+    "formula": "$$X_{\\text{out}} = X + \\text{SubLayer}(\\text{LN}(X))$$",
+    "gradient": "$$\\frac{\\partial X_{\\text{out}}}{\\partial X} = I + \\frac{\\partial \\text{SubLayer}}{\\partial X} \\cdot J_{\\text{LN}}$$",
+    "residual_stream": "$$X_N = X_0 + \\sum_{i=1}^{N} (\\Delta_{\\text{attn}_i} + \\Delta_{\\text{FFN}_i})$$"
+  },
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Gradient flow through $N$ residual blocks",
+        "steps": [
+          {
+            "name": "Single block",
+            "math": "$\\partial X_{\\text{out}}/\\partial X_{\\text{in}} = I + J_{\\text{sublayer}}$. If $\\|J_{\\text{sublayer}}\\|$ is small, gradient $\\approx I$."
+          },
+          {
+            "name": "Chain through $N$ blocks",
+            "math": "$$\\frac{\\partial X_N}{\\partial X_0} = \\prod_i (I + J_i) = I + \\sum_i J_i + \\sum_{i<j} J_i J_j + \\ldots$$"
+          },
+          {
+            "name": "Key: the identity term",
+            "math": "Expansion always includes $I$ as leading term. Even if all $J_i = 0$, gradient $= I$. Mathematical guarantee against vanishing gradients."
+          },
+          {
+            "name": "Without residuals",
+            "math": "$\\partial X_N/\\partial X_0 = \\prod_i J_i$. If each $\\|J_i\\| < 1$: $\\|\\partial X_N/\\partial X_0\\| < \\|J\\|^N \\to 0$ exponentially."
+          }
+        ],
+        "consequence": "Residuals convert multiplicative gradient chain (prone to vanishing) into additive one (always includes $I$). This is THE reason deep transformers train."
+      },
+      {
+        "title": "Forward coupling — the less-discussed benefit",
+        "steps": [
+          {
+            "name": "Without residuals",
+            "math": "$X_6 = f_6(f_5(\\ldots f_1(X_0)))$. Block 6 sees $X_0$ only after 5 transformations."
+          },
+          {
+            "name": "With residuals",
+            "math": "$X_6 = X_0 + \\Delta_1 + \\Delta_2 + \\ldots + \\Delta_6$. Block 6 sees $X_0$ DIRECTLY as additive component."
+          },
+          {
+            "name": "Consequence",
+            "math": "When embedding params change ($X_0$ changes), block 6 feels it directly — not through a chain of nonlinear transformations."
+          }
+        ],
+        "consequence": "Residuals create direct forward coupling between ALL layers. The 'residual stream' is a shared bus all blocks read from and write to."
+      },
+      {
+        "title": "Residual step size and stability",
+        "steps": [
+          {
+            "name": "The ratio",
+            "math": "$r = \\|\\text{SubLayer}(\\text{LN}(X))\\| \\,/\\, \\|X\\|$. How much each block changes the stream."
+          },
+          {
+            "name": "Healthy range",
+            "math": "$r$ should be $O(1)$, typically $0.1$ to $1.0$. $r \\gg 1$: sub-layer dominates. $r \\ll 1$: sub-layer contributes nothing."
+          }
+        ],
+        "consequence": "Monitor residual step size per block — key diagnostic for training health."
+      }
+    ]
+  },
+
+  "geometric_properties": [
+    "Monitor $\\|\\Delta\\| / \\|X\\|$ ratio per block — should be $O(1)$",
+    "Cosine similarity between adjacent deltas — orthogonal = independent info (good)",
+    "Residual stream norm $\\|X\\|$ should grow gradually, not exponentially"
+  ],
+  "statistical_properties": [
+    "$\\|\\Delta_{\\text{attn}}\\|$ vs $\\|\\Delta_{\\text{FFN}}\\|$ per block — should be roughly balanced",
+    "Contribution of each block to final output — removing block $k$ changes output significantly?"
+  ],
+  "numerical_properties": [
+    "Element-wise addition: $O(Bnd)$ ops, zero extra parameters",
+    "Gradient through residual: $O(1)$ cost via identity shortcut"
+  ],
+
+  "connections": {
+    "prerequisites": ["FOUNDATIONS.GRADIENT_DESCENT", "Matrix calculus (Jacobians)"],
+    "enables": ["TRANSFORMER.ENCODER_DECODER — deep stacks require residuals"],
+    "related": ["TRANSFORMER.LAYER_NORM — normalizes accumulated stream", "CNN.RESNET — originated residual connections"]
+  },
+
+  "open_questions": ["OQ1: In dual-encoder with cross-attention, should residual bypass cross-attention? Bypass = refinement. No bypass = full replacement."],
+
+  "artifacts": [
+    {"ref": "artifacts/docs/transformer_calculations.docx", "section": "Steps 8, 11"},
+    {"ref": "artifacts/diagrams/encoder_block_detail.png", "note": "Residual paths as dashed lines"}
+  ],
+  "notes": []
+}

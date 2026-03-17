@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "PRODUCTION.PRUNING",
+  "title": "Model Compression & Pruning",
+  "parent": "PRODUCTION",
+  "status": "introduced",
+  "date_created": "2026-03-15",
+  "date_updated": "2026-03-15",
+
+  "summary": "Three approaches: regularization-driven sparsity during training, post-hoc pruning loop, knowledge distillation. Path from research prototype to deployable product.",
+
+  "key_insights": [
+    "L1 regularization pushes weights toward zero — prune near-zero after training",
+    "Structured sparsity: zero out entire heads or FFN neurons — hardware-friendly",
+    "Post-hoc: measure contribution, remove, fine-tune, iterate",
+    "Iterative pruning > one-shot pruning",
+    "Quantization (separate technique): float32 → int8 for faster inference",
+    "These tools bridge research → deployable product at acceptable cost"
+  ],
+
+  "mathematical_core": {
+    "l1_regularization": "L_total = L_task + λ Σ|θ_i| — L1 penalty drives weights to exact zero",
+    "structured_pruning": "Remove entire rows/columns of W matrices (heads, neurons) based on importance score",
+    "importance_scores": "By magnitude: ||w||, by gradient: ||∂L/∂w||, by Fisher: E[(∂L/∂w)²], by removal impact: ΔL when removed"
+  },
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "L1 vs L2 regularization — why L1 creates exact sparsity",
+        "steps": [
+          {
+            "name": "L2 gradient",
+            "math": "∂/∂θ (λθ²) = 2λθ. Force is proportional to θ — shrinks large weights more, but NEVER pushes to exact zero. All weights remain non-zero."
+          },
+          {
+            "name": "L1 gradient",
+            "math": "∂/∂θ (λ|θ|) = λ·sign(θ). Constant force regardless of magnitude. When weight is near zero, the constant force can push it TO zero. Creates exact sparsity."
+          },
+          {
+            "name": "Geometric interpretation",
+            "math": "L1 constraint region is a diamond (corners at axes). L2 is a circle. The loss function's level curves are more likely to touch the diamond at a corner (axis = zero coordinate) than the circle at an axis."
+          }
+        ],
+        "consequence": "L1 naturally produces sparse solutions. L2 produces small but non-zero weights. For pruning, L1 is preferred because it identifies which weights can be removed."
+      },
+      {
+        "title": "Quantization — precision reduction math",
+        "steps": [
+          {
+            "name": "Float32 → Int8 mapping",
+            "math": "q = round(w/s + z), where s = scale = (w_max - w_min) / 255, z = zero_point. Dequantize: w ≈ s · (q - z)."
+          },
+          {
+            "name": "Error bound",
+            "math": "Maximum quantization error per weight: ε = s/2 = (w_max - w_min) / 510. For typical weight range [-1, 1]: ε ≈ 0.004 per weight."
+          },
+          {
+            "name": "Speedup",
+            "math": "Int8 matmul is 2-4× faster than float32 on modern hardware (GPU tensor cores, CPU VNNI). Memory: 4× reduction (4 bytes → 1 byte per weight)."
+          }
+        ],
+        "consequence": "8-bit quantization gives ~4× memory reduction and 2-4× speed with typically <1% accuracy loss. Post-training quantization (no retraining needed) works for most models."
+      }
+    ]
+  },
+
+  "connections": {
+    "prerequisites": ["Trained model (any architecture)", "Loss functions", "Regularization"],
+    "enables": ["Edge deployment", "Cost reduction", "Latency optimization"],
+    "related": ["PRODUCTION.DISTILLATION", "TRANSFORMER.VARIANTS"]
+  },
+
+  "application_relevance": "Directly relevant to sellable systems: customers need models within latency/cost/hardware constraints. Compression bridges 'works in lab' → 'deployable product'.",
+
+  "artifacts": [],
+  "notes": [
+    "Diagnostic monitors from transformer calculations doc (sparsity ratios, attention entropy, head contribution) are directly usable as pruning signals"
+  ]
+}

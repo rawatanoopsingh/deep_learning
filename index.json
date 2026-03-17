@@ -1,0 +1,121 @@
+{
+  "meta": {
+    "description": "Deep Learning Knowledge Graph — Landscape Index",
+    "owner": "Anoop",
+    "purpose": "Architecture innovation & application design",
+    "schema_version": "1.1",
+    "schema_notes": "v1.1: KaTeX math notation ($..$ inline, $$...$$ display). Architecture SVGs with clickable blocks.",
+    "last_updated": "2026-03-16",
+    "total_topics": 35
+  },
+  "topics": {
+    "FOUNDATIONS.GRADIENT_DESCENT": {"title": "Gradient Descent & Backpropagation", "status": "skeleton", "summary": "The engine of learning. Gradients via chain rule, update parameters."},
+    "FOUNDATIONS.LOSS_FUNCTIONS": {"title": "Loss Functions & Training Objectives", "status": "skeleton", "summary": "CE, MSE, contrastive, KL. Loss choice = architectural decision."},
+    "FOUNDATIONS.REGULARIZATION": {"title": "Regularization & Generalization", "status": "skeleton", "summary": "Dropout, weight decay, L1/L2, early stopping. SGD noise."},
+    "FOUNDATIONS.EMBEDDINGS": {"title": "Embeddings & Representation Learning", "status": "skeleton", "summary": "Discrete inputs to dense vectors. Geometry encodes meaning."},
+    "FOUNDATIONS.ACTIVATIONS": {"title": "Activation Functions", "status": "initial_intuition", "summary": "ReLU, GELU, Sigmoid, SwiGLU. Nonlinearity makes depth meaningful.", "has_math_depth": true, "math_depth_topics": ["Collapse theorem", "ReLU geometry", "GELU probabilistic", "Sigmoid saturation", "SwiGLU gating"]},
+    "FOUNDATIONS.INDUCTIVE_BIAS": {"title": "Architecture as Inductive Bias", "status": "synthesized", "summary": "Architecture defines function family, constrains solutions, enables interpretability.", "has_math_depth": true},
+    "FOUNDATIONS.BATCHING_SGD": {"title": "Batching & SGD", "status": "synthesized", "summary": "Parallelism + SGD validity + noise as regularizer.", "has_math_depth": true},
+    "TRANSFORMER.SELF_ATTENTION": {"title": "Self-Attention (Q/K/V)", "status": "solid", "summary": "QKᵀ/√d_k scoring, softmax, weighted V retrieval.", "has_math_depth": true, "math_depth_topics": ["1/√d_k variance chain", "Softmax Jacobian"]},
+    "TRANSFORMER.MULTI_HEAD": {"title": "Multi-Head Attention", "status": "solid", "summary": "Feature-dim split across heads. W_O for cross-head mixing.", "has_math_depth": true, "math_depth_topics": ["Compute equivalence", "W_O recovery", "What splitting loses"]},
+    "TRANSFORMER.POSITIONAL_ENCODING": {"title": "Positional Encoding", "status": "solid", "summary": "Sine/cosine PE. Rotation matrices. Constant norm.", "has_math_depth": true, "math_depth_topics": ["Relative position via rotation", "Constant norm proof", "Dot product distance", "Signal preservation"]},
+    "TRANSFORMER.CROSS_ATTENTION": {"title": "Cross-Attention", "status": "strong_intuition", "summary": "Q from one source, K/V from another. Rectangular scores.", "has_math_depth": true, "math_depth_topics": ["Q/KV asymmetry", "Rectangular properties", "Complexity"]},
+    "TRANSFORMER.FFN": {"title": "Feed-Forward Network", "status": "solid", "summary": "Expand-compress MLP. Separability. ReLU sparsity.", "has_math_depth": true, "math_depth_topics": ["Separability (Cover)", "ReLU sparsity", "GELU vs ReLU", "Position-wise independence"]},
+    "TRANSFORMER.LAYER_NORM": {"title": "Layer Normalization", "status": "deepened", "summary": "Per-dim γ/β. Residual stream statistics. Pre-LN vs Post-LN.", "has_math_depth": true, "math_depth_topics": ["LN Jacobian", "γ/β non-redundancy", "Pre/Post-LN gradients"]},
+    "TRANSFORMER.RESIDUALS": {"title": "Residual Connections", "status": "deepened", "summary": "Identity shortcut. Forward coupling. Residual stream bus.", "has_math_depth": true, "math_depth_topics": ["N-block gradient flow", "Forward coupling", "Step size analysis"]},
+    "TRANSFORMER.MASKING": {"title": "Masking (Causal & Padding)", "status": "covered", "summary": "−∞ masking. Parallel training. Gradient barrier.", "has_math_depth": true, "math_depth_topics": ["Why −∞ not 0", "Parallel training", "Gradient barrier"]},
+    "TRANSFORMER.ENCODER_DECODER": {"title": "Encoder-Decoder Structure", "status": "exploring", "summary": "Encoder (bidirectional) + Decoder (3 sub-layers). Encoder runs once.", "has_math_depth": true, "math_depth_topics": ["Parameter count", "KV-cache inference"]},
+    "TRANSFORMER.VARIANTS": {"title": "Architecture Variants", "status": "covered", "summary": "Encoder-only / Decoder-only / Encoder-decoder.", "has_math_depth": true, "math_depth_topics": ["Bidirectional vs causal", "Parameter efficiency"]},
+    "TRANSFORMER.TRAINING": {"title": "Training", "status": "covered", "summary": "Teacher forcing, CE loss, AdamW, warmup.", "has_math_depth": true, "math_depth_topics": ["AdamW decomposition", "Warmup necessity", "Teacher forcing"]},
+    "CNN.CONVOLUTION": {"title": "CNN Architecture", "status": "initial_intuition", "summary": "Learned FIR filters. Hierarchical composition. Builds correlations bottom-up.", "has_math_depth": true, "math_depth_topics": ["Toeplitz/im2col", "Cascade collapse", "Variance evolution", "Efficiency", "Basis functions"]},
+    "CNN.RESNET": {"title": "ResNet", "status": "skeleton", "summary": "Residual connections in CNNs. BN vs LN. Depthwise separable."},
+    "CNN.VIT": {"title": "Vision Transformer (ViT)", "status": "skeleton", "summary": "Patches as tokens. Transformer encoder on images."},
+    "HYBRID.CNN_TRANSFORMER": {"title": "CNN + Transformer Hybrid", "status": "initial_intuition", "summary": "CNN local features → transformer global relationships."},
+    "AUTOENCODER.BASIC": {"title": "Autoencoders", "status": "skeleton", "summary": "Bottleneck compression. Anomaly detection."},
+    "AUTOENCODER.VAE": {"title": "VAE", "status": "skeleton", "summary": "Probabilistic bottleneck. Reparameterization. ELBO."},
+    "GAN.BASIC": {"title": "GANs", "status": "skeleton", "summary": "Generator vs discriminator. Mode collapse."},
+    "DIFFUSION.BASIC": {"title": "Diffusion Models", "status": "skeleton", "summary": "Noise prediction. Simple MSE. Stable training."},
+    "RNN.BASICS": {"title": "RNNs/LSTMs (Historical)", "status": "skeleton", "summary": "Sequential processing. Why transformers replaced them."},
+    "GNN.BASICS": {"title": "Graph Neural Networks", "status": "skeleton", "summary": "Message passing. L-hop neighborhoods."},
+    "GNN.GAT": {"title": "Graph Attention Networks", "status": "skeleton", "summary": "Attention on edges. Transformer = GAT on full graph."},
+    "MULTIMODAL.FUSION": {"title": "Multimodal Fusion", "status": "skeleton", "summary": "Early/late/cross-attention fusion."},
+    "PRODUCTION.PRUNING": {"title": "Pruning & Compression", "status": "introduced", "summary": "L1 sparsity, structured pruning.", "has_math_depth": true, "math_depth_topics": ["L1 vs L2", "Quantization"]},
+    "PRODUCTION.DISTILLATION": {"title": "Knowledge Distillation", "status": "introduced", "summary": "Teacher-student soft labels. Temperature.", "has_math_depth": true, "math_depth_topics": ["Soft vs hard labels", "T² correction", "When it helps"]},
+    "PRODUCTION.EFFICIENT_ATTENTION": {"title": "Efficient Attention", "status": "skeleton", "summary": "Sparse, linear, Flash Attention."},
+    "PRODUCTION.QUANTIZATION": {"title": "Quantization", "status": "skeleton", "summary": "Float32 → int8/int4. Mixed precision."}
+  },
+  "connections": [
+    {"from": "FOUNDATIONS.GRADIENT_DESCENT", "to": "FOUNDATIONS.BATCHING_SGD", "type": "prerequisite"},
+    {"from": "FOUNDATIONS.GRADIENT_DESCENT", "to": "FOUNDATIONS.LOSS_FUNCTIONS", "type": "related"},
+    {"from": "FOUNDATIONS.ACTIVATIONS", "to": "TRANSFORMER.FFN", "type": "prerequisite"},
+    {"from": "FOUNDATIONS.ACTIVATIONS", "to": "CNN.CONVOLUTION", "type": "prerequisite"},
+    {"from": "FOUNDATIONS.ACTIVATIONS", "to": "RNN.BASICS", "type": "prerequisite"},
+    {"from": "FOUNDATIONS.LOSS_FUNCTIONS", "to": "TRANSFORMER.TRAINING", "type": "prerequisite"},
+    {"from": "FOUNDATIONS.LOSS_FUNCTIONS", "to": "AUTOENCODER.BASIC", "type": "prerequisite"},
+    {"from": "FOUNDATIONS.REGULARIZATION", "to": "PRODUCTION.PRUNING", "type": "enables"},
+    {"from": "FOUNDATIONS.EMBEDDINGS", "to": "TRANSFORMER.SELF_ATTENTION", "type": "prerequisite"},
+    {"from": "FOUNDATIONS.EMBEDDINGS", "to": "GNN.BASICS", "type": "prerequisite"},
+    {"from": "FOUNDATIONS.INDUCTIVE_BIAS", "to": "TRANSFORMER.SELF_ATTENTION", "type": "enables"},
+    {"from": "FOUNDATIONS.INDUCTIVE_BIAS", "to": "CNN.CONVOLUTION", "type": "enables"},
+    {"from": "FOUNDATIONS.BATCHING_SGD", "to": "TRANSFORMER.TRAINING", "type": "prerequisite"},
+    {"from": "TRANSFORMER.SELF_ATTENTION", "to": "TRANSFORMER.MULTI_HEAD", "type": "prerequisite"},
+    {"from": "TRANSFORMER.SELF_ATTENTION", "to": "TRANSFORMER.CROSS_ATTENTION", "type": "prerequisite"},
+    {"from": "TRANSFORMER.SELF_ATTENTION", "to": "HYBRID.CNN_TRANSFORMER", "type": "prerequisite"},
+    {"from": "TRANSFORMER.MULTI_HEAD", "to": "TRANSFORMER.ENCODER_DECODER", "type": "prerequisite"},
+    {"from": "TRANSFORMER.POSITIONAL_ENCODING", "to": "TRANSFORMER.ENCODER_DECODER", "type": "prerequisite"},
+    {"from": "TRANSFORMER.FFN", "to": "TRANSFORMER.ENCODER_DECODER", "type": "prerequisite"},
+    {"from": "TRANSFORMER.LAYER_NORM", "to": "TRANSFORMER.RESIDUALS", "type": "related"},
+    {"from": "TRANSFORMER.RESIDUALS", "to": "TRANSFORMER.ENCODER_DECODER", "type": "prerequisite"},
+    {"from": "TRANSFORMER.RESIDUALS", "to": "CNN.RESNET", "type": "related"},
+    {"from": "TRANSFORMER.MASKING", "to": "TRANSFORMER.ENCODER_DECODER", "type": "prerequisite"},
+    {"from": "TRANSFORMER.CROSS_ATTENTION", "to": "TRANSFORMER.ENCODER_DECODER", "type": "prerequisite"},
+    {"from": "TRANSFORMER.CROSS_ATTENTION", "to": "MULTIMODAL.FUSION", "type": "enables"},
+    {"from": "TRANSFORMER.ENCODER_DECODER", "to": "TRANSFORMER.VARIANTS", "type": "prerequisite"},
+    {"from": "TRANSFORMER.VARIANTS", "to": "PRODUCTION.PRUNING", "type": "enables"},
+    {"from": "CNN.CONVOLUTION", "to": "CNN.RESNET", "type": "prerequisite"},
+    {"from": "CNN.CONVOLUTION", "to": "HYBRID.CNN_TRANSFORMER", "type": "prerequisite"},
+    {"from": "CNN.RESNET", "to": "CNN.VIT", "type": "prerequisite"},
+    {"from": "HYBRID.CNN_TRANSFORMER", "to": "MULTIMODAL.FUSION", "type": "enables"},
+    {"from": "AUTOENCODER.BASIC", "to": "AUTOENCODER.VAE", "type": "prerequisite"},
+    {"from": "AUTOENCODER.VAE", "to": "DIFFUSION.BASIC", "type": "related"},
+    {"from": "GNN.BASICS", "to": "GNN.GAT", "type": "prerequisite"},
+    {"from": "GNN.GAT", "to": "MULTIMODAL.FUSION", "type": "enables"},
+    {"from": "PRODUCTION.PRUNING", "to": "PRODUCTION.DISTILLATION", "type": "related"},
+    {"from": "PRODUCTION.PRUNING", "to": "PRODUCTION.QUANTIZATION", "type": "related"},
+    {"from": "PRODUCTION.EFFICIENT_ATTENTION", "to": "TRANSFORMER.SELF_ATTENTION", "type": "related"}
+  ],
+  "open_questions": [
+    {"id": "OQ1", "question": "Residual bypass for cross-attention in dual-encoder?", "related_topics": ["TRANSFORMER.RESIDUALS", "TRANSFORMER.CROSS_ATTENTION", "MULTIMODAL.FUSION"]},
+    {"id": "OQ2", "question": "CNN-to-transformer boundary: how many conv layers before attention?", "related_topics": ["HYBRID.CNN_TRANSFORMER", "CNN.CONVOLUTION"]}
+  ],
+  "architecture_views": {
+    "TRANSFORMER": {
+      "diagrams": [
+        {"file": "artifacts/diagrams/system_overview.png", "description": "Level 0: System overview", "level": 0},
+        {"file": "artifacts/diagrams/encoder_block_detail.png", "description": "Level 1: Encoder block", "level": 1},
+        {"file": "artifacts/diagrams/decoder_block_detail.png", "description": "Level 2: Decoder block", "level": 2},
+        {"file": "artifacts/diagrams/transformer_N2_fully_expanded.svg", "description": "N=2 fully unrolled", "level": "expanded"}
+      ]
+    },
+    "CNN": {
+      "diagrams": [
+        {"file": "artifacts/diagrams/cnn_architecture_clickable.svg", "description": "CNN Architecture — clickable blocks", "level": 0}
+      ]
+    }
+  },
+  "artifacts": {
+    "diagrams": [
+      {"file": "artifacts/diagrams/system_overview.png", "topic": "TRANSFORMER.ENCODER_DECODER", "description": "Level 0: System overview"},
+      {"file": "artifacts/diagrams/encoder_block_detail.png", "topic": "TRANSFORMER.ENCODER_DECODER", "description": "Level 1: Encoder block"},
+      {"file": "artifacts/diagrams/decoder_block_detail.png", "topic": "TRANSFORMER.ENCODER_DECODER", "description": "Level 2: Decoder block"},
+      {"file": "artifacts/diagrams/transformer_N2_fully_expanded.svg", "topic": "TRANSFORMER.ENCODER_DECODER", "description": "N=2 fully unrolled"},
+      {"file": "artifacts/diagrams/cnn_architecture_clickable.svg", "topic": "CNN.CONVOLUTION", "description": "CNN Architecture — clickable components"}
+    ],
+    "docs": [
+      {"file": "artifacts/docs/transformer_calculations.docx", "topic": "TRANSFORMER", "description": "Complete calculation flow, 14 steps"},
+      {"file": "artifacts/docs/encoder_decoder_structure.docx", "topic": "TRANSFORMER.ENCODER_DECODER", "description": "Topic document, A4 template"},
+      {"file": "artifacts/docs/transformer_learning_plan_v2.docx", "topic": "TRANSFORMER", "description": "4-week accelerated plan"},
+      {"file": "artifacts/docs/dl_assessment.pdf", "topic": "TRANSFORMER", "description": "36-question self-assessment"}
+    ]
+  }
+}

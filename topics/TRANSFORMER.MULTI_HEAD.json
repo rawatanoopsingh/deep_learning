@@ -1,0 +1,116 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "TRANSFORMER.MULTI_HEAD",
+  "title": "Multi-Head Attention",
+  "parent": "TRANSFORMER",
+  "status": "solid",
+  "date_created": "2026-03-15",
+  "date_updated": "2026-03-16",
+
+  "summary": "Embedding dimension split across $h$ heads (not the sequence). Each head operates in $d_k = d_{\\text{model}}/h$ subspace with own Q/K/V projections. Outputs concatenated and projected through $W_O$ for cross-head mixing.",
+
+  "key_insights": [
+    "Heads split the FEATURE dimension, not the sequence — every head sees every token",
+    "Each head can learn different relationship types (syntactic, semantic, positional)",
+    "Total computation same as single-head: smaller $d_k$ per head $\\times$ more heads",
+    "$W_O$ after concatenation is the only place cross-head information mixes",
+    "Some cross-subspace interactions are lost — $W_O$ recovers them via linear combination"
+  ],
+
+  "mathematical_core": {
+    "formula": "$$\\text{MultiHead}(Q,K,V) = \\text{Concat}(\\text{head}_1, \\ldots, \\text{head}_h) \\cdot W_O$$",
+    "per_head": "$\\text{head}_i = \\text{Attention}(XW_Q^i, XW_K^i, XW_V^i)$",
+    "reshape": "$[B, n, d_{\\text{model}}] \\to [B, n, h, d_k] \\to [B, h, n, d_k]$",
+    "concat": "$[B, h, n, d_k] \\to [B, n, h \\cdot d_k] = [B, n, d_{\\text{model}}]$",
+    "parameters": "Per head: $W_Q^i, W_K^i, W_V^i \\in \\mathbb{R}^{d_{\\text{model}} \\times d_k}$. Output: $W_O \\in \\mathbb{R}^{d_{\\text{model}} \\times d_{\\text{model}}}$"
+  },
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Computational equivalence: multi-head vs single-head",
+        "steps": [
+          {
+            "name": "Single-head cost",
+            "math": "Score: $[B,n,d] \\times [B,d,n] = O(Bn^2 d_{\\text{model}})$"
+          },
+          {
+            "name": "Multi-head cost",
+            "math": "Per head: $O(Bn^2 d_k)$. Total: $h \\times O(Bn^2 d_k) = O(Bn^2 \\cdot h d_k) = O(Bn^2 d_{\\text{model}})$ since $h \\cdot d_k = d_{\\text{model}}$"
+          },
+          {
+            "name": "Result",
+            "math": "Same $O(Bn^2 d_{\\text{model}})$. Multi-head redistributes compute across parallel subspaces."
+          }
+        ],
+        "consequence": "Diversity of attention patterns 'for free' in terms of compute."
+      },
+      {
+        "title": "$W_O$ recovers cross-head information",
+        "steps": [
+          {
+            "name": "Without $W_O$",
+            "math": "Output $= \\text{Concat}(\\text{head}_1, \\ldots, \\text{head}_h) \\in \\mathbb{R}^{[B, n, d_{\\text{model}}]}$. Each $d_k$-slice independently computed — no cross-head interaction."
+          },
+          {
+            "name": "With $W_O$",
+            "math": "Output $= \\text{Concat} \\cdot W_O$. $W_O \\in \\mathbb{R}^{d_{\\text{model}} \\times d_{\\text{model}}}$ mixes all $h \\cdot d_k$ dimensions. Each output dimension = linear combination of ALL heads."
+          },
+          {
+            "name": "Information recovery",
+            "math": "If $\\text{rank}(W_O) = d_{\\text{model}}$, any linear combination of heads is representable. Monitor: singular values of $W_O$."
+          }
+        ],
+        "consequence": "$W_O$ is the synthesis layer. If many singular values $\\approx 0$, cross-head info is being discarded."
+      },
+      {
+        "title": "What is lost by splitting into heads",
+        "steps": [
+          {
+            "name": "Setup",
+            "math": "Single-head: score uses all $d_{\\text{model}}$ dims. Multi-head: each head uses only $d_k$ dims."
+          },
+          {
+            "name": "Lost interactions",
+            "math": "If $Q$ dim 1 and $K$ dim $d_k+1$ interact, no single head captures it."
+          },
+          {
+            "name": "Recovery",
+            "math": "$W_Q^i$ and $W_K^i$ are projections from full $d_{\\text{model}}$ → $d_k$. They can learn to route cross-subspace interactions into a single head."
+          }
+        ],
+        "consequence": "Loss is soft, not hard. Learned projections can route interactions, but must discover routings during training."
+      }
+    ]
+  },
+
+  "geometric_properties": [
+    "Each head operates in a $d_k$-dimensional subspace — heads partition the embedding geometry",
+    "Monitor per-head rank of attention matrix $A$ — rank 1 = collapsed to single position",
+    "Singular values of $W_O$ reveal how many cross-head combinations are actually used"
+  ],
+  "statistical_properties": [
+    "Different heads should have different attention entropy distributions — identical = redundant",
+    "Monitor: average attention weight to [CLS] or first token per head — some heads 'park' on defaults"
+  ],
+  "numerical_properties": [
+    "Total attention params per layer: $4 d_{\\text{model}}^2$ ($W_Q, W_K, W_V, W_O$)",
+    "Reshape is zero-cost view operation — no FLOPs, no memory allocation",
+    "Memory: must store $h$ separate $[B, n, n]$ attention matrices"
+  ],
+
+  "connections": {
+    "prerequisites": ["TRANSFORMER.SELF_ATTENTION"],
+    "enables": ["TRANSFORMER.ENCODER_DECODER"],
+    "related": ["TRANSFORMER.FFN — different role: attention routes info, FFN transforms it"]
+  },
+
+  "artifacts": [
+    {"ref": "artifacts/docs/transformer_calculations.docx", "section": "Step 7"},
+    {"ref": "artifacts/diagrams/encoder_block_detail.png", "note": "Shows 2-head split explicitly"}
+  ],
+  "notes": [
+    "For domain-specific applications, heads could be intentionally designed to capture known coupling patterns",
+    "Open direction: head pruning — some heads contribute little and can be removed"
+  ]
+}

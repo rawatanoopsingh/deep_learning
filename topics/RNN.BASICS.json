@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "RNN.BASICS",
+  "title": "RNNs, LSTMs & GRUs (Historical Context)",
+  "parent": "RNN",
+  "status": "skeleton",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "Sequential models that process one token at a time, maintaining a hidden state. LSTMs/GRUs add gating to control information flow. Transformers replaced them because: (1) RNNs are inherently sequential (no parallelism), (2) long-range dependencies are hard despite gates, (3) attention provides direct access to any position. Understanding why they failed informs transformer design choices.",
+  "key_insights": [
+    "RNN: h_t = f(h_{t-1}, x_t) — hidden state carries all history. Sequential by construction.",
+    "Vanishing gradient: gradients through long chains of h_t multiplications shrink to zero",
+    "LSTM: adds cell state c_t with forget/input/output gates — controls what to remember/forget",
+    "GRU: simplified LSTM with 2 gates instead of 3 — similar performance, fewer parameters",
+    "Why transformers won: parallel training (no sequential dependency), direct long-range access (attention), scalability (more compute = better results)",
+    "RNNs still useful for: streaming/online processing, very long sequences where O(n^2) attention is prohibitive"
+  ],
+  "mathematical_core": {
+    "rnn": "h_t = tanh(W_hh * h_{t-1} + W_xh * x_t + b)",
+    "lstm_forget": "f_t = sigma(W_f * [h_{t-1}, x_t] + b_f) — what to forget from cell state",
+    "lstm_input": "i_t = sigma(W_i * [h_{t-1}, x_t] + b_i) — what new info to store",
+    "lstm_cell": "c_t = f_t * c_{t-1} + i_t * tanh(W_c * [h_{t-1}, x_t] + b_c)",
+    "lstm_output": "h_t = o_t * tanh(c_t) — what to output from cell state"
+  },
+  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+  "connections": {
+    "prerequisites": ["FOUNDATIONS.GRADIENT_DESCENT"],
+    "enables": ["Understanding why transformers were designed the way they are"],
+    "related": [
+      "TRANSFORMER.SELF_ATTENTION — attention solves the long-range dependency problem RNNs couldn't",
+      "TRANSFORMER.POSITIONAL_ENCODING — needed because transformers gave up sequential processing",
+      "TRANSFORMER.MASKING — simulates sequential processing in parallel"
+    ]
+  },
+  "artifacts": [],
+  "notes": ["Historical context — understand what problem transformers solved. Not a primary learning target for architecture innovation."]
+}

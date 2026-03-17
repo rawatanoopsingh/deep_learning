@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "PRODUCTION.QUANTIZATION",
+  "title": "Quantization & Mixed Precision",
+  "parent": "PRODUCTION",
+  "status": "skeleton",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "Reduce numerical precision of weights and activations (float32 to int8/int4) for faster inference and smaller model size. Post-training quantization requires no retraining. Quantization-aware training fine-tunes with simulated low precision. Mixed precision: float16 forward/backward, float32 accumulation.",
+  "key_insights": [
+    "Post-training quantization (PTQ): quantize after training, no retraining needed. Easy but some accuracy loss.",
+    "Quantization-aware training (QAT): simulate quantization during training. Better accuracy, requires retraining.",
+    "Mixed precision training: float16 for most ops (2x memory savings), float32 for accumulation and LN (numerical stability)",
+    "INT8: 4x memory reduction, 2-4x speedup on modern hardware (tensor cores, VNNI)",
+    "INT4: 8x memory reduction, enables running large models on consumer GPUs (GPTQ, AWQ)",
+    "Key interaction with LayerNorm: LN epsilon must be larger in float16 to avoid numerical issues"
+  ],
+  "mathematical_core": {
+    "quantize": "q = round(w / scale + zero_point), where scale = (w_max - w_min) / (2^bits - 1)",
+    "dequantize": "w_approx = scale * (q - zero_point)",
+    "error_bound": "max error per weight = scale / 2",
+    "mixed_precision": "Forward/backward in float16, optimizer state and accumulation in float32"
+  },
+  "mathematical_depth": {"derivations": [], "status": "to be populated — quantization error analysis already in PRODUCTION.PRUNING"},
+  "connections": {
+    "prerequisites": ["Trained model", "TRANSFORMER.LAYER_NORM — epsilon interaction with precision"],
+    "enables": ["Edge deployment", "Consumer GPU deployment", "Cost reduction"],
+    "related": ["PRODUCTION.PRUNING", "PRODUCTION.DISTILLATION"]
+  },
+  "artifacts": [],
+  "notes": []
+}

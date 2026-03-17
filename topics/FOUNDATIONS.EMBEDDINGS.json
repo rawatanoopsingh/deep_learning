@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "FOUNDATIONS.EMBEDDINGS",
+  "title": "Embeddings & Representation Learning",
+  "parent": "FOUNDATIONS",
+  "status": "skeleton",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "Mapping discrete or high-dimensional inputs to dense, learned vector spaces where geometry encodes meaning. Token embeddings, word2vec, sentence embeddings. The quality of the embedding geometry determines what downstream models can learn. Foundational to transformers, retrieval systems, and knowledge graphs.",
+  "key_insights": [],
+  "mathematical_core": {
+    "lookup": "E = W_embed[token_id] — row lookup, not matrix multiply. W_embed ∈ [V, d_model]",
+    "similarity": "cos(E_a, E_b) = E_a · E_b / (||E_a|| · ||E_b||) — cosine similarity in embedding space",
+    "word2vec_insight": "king - man + woman ≈ queen — arithmetic in embedding space encodes semantic relationships"
+  },
+  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+  "connections": {
+    "prerequisites": ["Linear algebra (vector spaces)"],
+    "enables": ["TRANSFORMER.SELF_ATTENTION — operates on embedded vectors", "TRANSFORMER.POSITIONAL_ENCODING — added to content embeddings"],
+    "related": ["TRANSFORMER.VARIANTS — encoder-only models as embedding generators", "FOUNDATIONS.INDUCTIVE_BIAS — embedding geometry is learned structure"]
+  },
+  "artifacts": [],
+  "notes": ["Connects to knowledge graph interest: graph node embeddings serve as K/V in cross-attention"]
+}

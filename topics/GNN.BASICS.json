@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "GNN.BASICS",
+  "title": "Graph Neural Networks — Message Passing & Aggregation",
+  "parent": "GNN",
+  "status": "skeleton",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "Neural networks that operate on graph-structured data (nodes + edges). Core idea: each node aggregates information from its neighbors (message passing), then updates its own representation. Repeated over L layers, each node's representation captures its L-hop neighborhood. Directly relevant to knowledge graph interest.",
+  "key_insights": [
+    "Message passing: each node collects features from its neighbors, aggregates them (sum/mean/max), updates its own feature",
+    "L layers of message passing = each node 'sees' its L-hop neighborhood",
+    "Inductive bias: graph structure determines information flow (contrast: transformer = fully connected, CNN = grid)",
+    "GCN (Graph Convolutional Network): simplest form — normalized sum of neighbor features",
+    "GraphSAGE: learns to sample and aggregate from neighbors — scalable to large graphs",
+    "Connection to attention: Graph Attention Network (GAT) uses attention weights on edges — transformer attention on a graph"
+  ],
+  "mathematical_core": {
+    "message_passing": "h_v^(l+1) = UPDATE(h_v^(l), AGGREGATE({h_u^(l) : u ∈ N(v)}))",
+    "gcn": "H^(l+1) = σ(D̃^{-½} Ã D̃^{-½} H^(l) W^(l)) — normalized adjacency × features × weights",
+    "gat": "α_{vu} = softmax_u(LeakyReLU(aᵀ[Wh_v || Wh_u])) — attention on edges"
+  },
+  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+  "connections": {
+    "prerequisites": ["FOUNDATIONS.EMBEDDINGS", "Graph theory basics (nodes, edges, adjacency)"],
+    "enables": ["Knowledge graph reasoning", "Molecular property prediction", "Social network analysis"],
+    "related": [
+      "TRANSFORMER.SELF_ATTENTION — self-attention is GNN on a fully-connected graph",
+      "TRANSFORMER.CROSS_ATTENTION — cross-attention between graph nodes and query = knowledge-grounded attention",
+      "GNN.GAT — attention mechanism applied to graph edges"
+    ]
+  },
+  "artifacts": [],
+  "notes": ["Learning plan Week 8 topic. Directly connects to knowledge graph + cross-attention idea discussed during assessment."]
+}

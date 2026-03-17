@@ -1,0 +1,221 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "CNN.CONVOLUTION",
+  "title": "Convolutional Layers & CNN Architecture",
+  "parent": "CNN",
+  "status": "initial_intuition",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "Learned FIR filters with hierarchical composition. Weight sharing gives parameter efficiency and cache-friendly GPU execution. Nonlinearity between layers is what makes cascading meaningful. Builds correlations hierarchically (local to global) vs transformer's global-at-once approach. More explainable because each kernel and feature map is directly visualizable.",
+
+  "key_insights": [
+    "CNN kernels = learned FIR filters. Coefficients learned from data, not hand-designed.",
+    "FIRs feeding FIRs: stacked layers = cascaded filter banks. The NONLINEARITY between layers is what prevents collapse to a single longer filter and creates the hierarchy.",
+    "CNN builds correlations HIERARCHICALLY (local → composed → global). Transformer discovers them GLOBALLY (all-to-all attention). Two mechanisms for the same goal.",
+    "Weight sharing is not just parameter reduction — it creates a cache-friendly memory access pattern that maps perfectly to GPU hardware.",
+    "Favorable for low-performance machines: small parameter count, cache-friendly access. But NOT necessarily low-FLOPs — kernel applied at every spatial position.",
+    "CNN is more explainable: each kernel is visualizable, each feature map shows where a pattern was detected, the hierarchy itself IS the explanation structure.",
+    "Kernels are unconstrained learned basis functions. Can be CONSTRAINED to specific function families (Gabor, wavelet, Chebyshev, Fourier) to encode domain knowledge.",
+    "Nonlinearity between conv layers is NOT an MLP — just pointwise ReLU/GELU. Conv = linear transform, activation = nonlinearity. That's the whole unit."
+  ],
+
+  "mathematical_core": {
+    "convolution_1d": "$y[n] = \\sum_{k=0}^{K-1} h[k] \\cdot x[n-k]$ — FIR filter form",
+    "convolution_2d": "$(f * g)(i,j) = \\sum_m \\sum_n f(m,n) \\cdot g(i-m, j-n)$",
+    "output_size": "$o = \\frac{i - k + 2p}{s} + 1$ — input $i$, kernel $k$, padding $p$, stride $s$",
+    "parameters_per_layer": "$k^2 \\cdot C_{\\text{in}} \\cdot C_{\\text{out}}$ (+ $C_{\\text{out}}$ bias terms)",
+    "receptive_field": "After $L$ layers with kernel $k$: $\\text{RF} = L(k-1) + 1$"
+  },
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Convolution as constrained matrix multiply (Toeplitz/im2col)",
+        "steps": [
+          {
+            "name": "Reshape input into patch matrix",
+            "math": "For input $\\mathbf{x} \\in \\mathbb{R}^{H \\times W \\times C_{\\text{in}}}$ with kernel size $k$: extract all $k \\times k$ patches, flatten each to $\\mathbb{R}^{k^2 C_{\\text{in}}}$. Stack as columns: $X_{\\text{patches}} \\in \\mathbb{R}^{k^2 C_{\\text{in}} \\times N}$ where $N = H_{\\text{out}} \\cdot W_{\\text{out}}$."
+          },
+          {
+            "name": "Kernel as weight matrix",
+            "math": "Reshape $C_{\\text{out}}$ kernels of size $[k, k, C_{\\text{in}}]$ into $W \\in \\mathbb{R}^{C_{\\text{out}} \\times k^2 C_{\\text{in}}}$. Each row is one flattened kernel."
+          },
+          {
+            "name": "Convolution = matrix multiply",
+            "math": "$Y = W \\cdot X_{\\text{patches}} \\in \\mathbb{R}^{C_{\\text{out}} \\times N}$. Reshape back to $[H_{\\text{out}}, W_{\\text{out}}, C_{\\text{out}}]$."
+          },
+          {
+            "name": "Why this is efficient on GPUs",
+            "math": "Dense GEMM is the most optimized GPU operation. $W$ is small (fits in L1/L2 cache), reused $N$ times. Weight sharing = same weights, millions of reuses, perfect cache locality."
+          },
+          {
+            "name": "Contrast with fully connected",
+            "math": "FC on same input: $W_{\\text{fc}} \\in \\mathbb{R}^{(C_{\\text{out}} \\cdot H_{\\text{out}} \\cdot W_{\\text{out}}) \\times (C_{\\text{in}} \\cdot H \\cdot W)}$. For $224 \\times 224$ RGB → 64 filters: FC ≈ 9.6 billion params. Conv ($3 \\times 3$): 1,728 params. Factor of $5.5 \\times 10^6$ fewer."
+          }
+        ],
+        "consequence": "Convolution = structured, weight-shared matrix multiply. The Toeplitz structure gives both parameter efficiency and hardware efficiency."
+      },
+      {
+        "title": "Why nonlinearity between layers is essential — cascade collapse",
+        "steps": [
+          {
+            "name": "Two linear convolutions in cascade",
+            "math": "$\\mathbf{y} = W_2 (W_1 \\mathbf{x}) = (W_2 W_1) \\mathbf{x} = W_{\\text{combined}} \\mathbf{x}$. Cascade of two linear convolutions = single convolution."
+          },
+          {
+            "name": "Effective kernel of the cascade",
+            "math": "If $W_1$ has kernel size $k_1$ and $W_2$ has kernel size $k_2$, then $W_{\\text{combined}}$ has effective kernel size $k_1 + k_2 - 1$. Stacking linear convs only increases receptive field, not expressivity."
+          },
+          {
+            "name": "Nonlinearity breaks the collapse",
+            "math": "$\\mathbf{y} = W_2 \\cdot \\text{ReLU}(W_1 \\mathbf{x})$. Cannot reduce to single linear operation. Output depends on which elements of $W_1 \\mathbf{x}$ are positive — input-dependent piecewise-linear behavior."
+          },
+          {
+            "name": "Piecewise linear regions",
+            "math": "ReLU with $d$ neurons partitions input space into up to $2^d$ regions, each with different linear function. $L$ layers: up to $2^{Ld}$ regions. Exponential growth = source of deep CNN expressivity."
+          }
+        ],
+        "consequence": "Without nonlinearity: $N$ conv layers = 1 conv layer. With nonlinearity: $N$ layers = exponentially many piecewise-linear functions. Nonlinearity is the mechanism making depth meaningful."
+      },
+      {
+        "title": "Variance evolution through conv layers — why initialization matters",
+        "steps": [
+          {
+            "name": "Single conv layer variance",
+            "math": "Output element = sum of $k^2 C_{\\text{in}}$ terms, each product of input and weight. $$\\text{Var}(\\text{output}) = k^2 \\cdot C_{\\text{in}} \\cdot \\text{Var}(w) \\cdot \\text{Var}(x)$$"
+          },
+          {
+            "name": "Xavier initialization (variance preservation)",
+            "math": "For $\\text{Var}(\\text{output}) = \\text{Var}(\\text{input})$: $$\\text{Var}(w) = \\frac{1}{k^2 \\cdot C_{\\text{in}}}$$"
+          },
+          {
+            "name": "After ReLU",
+            "math": "ReLU zeros negative values. For symmetric zero-mean input, ReLU halves variance: $\\text{Var}(\\text{after ReLU}) = \\frac{1}{2}\\text{Var}(\\text{input})$"
+          },
+          {
+            "name": "Kaiming initialization (corrects for ReLU)",
+            "math": "$$\\text{Var}(w) = \\frac{2}{k^2 \\cdot C_{\\text{in}}}$$\nFactor of 2 compensates for ReLU halving. This is He initialization."
+          },
+          {
+            "name": "Through $L$ layers without correction",
+            "math": "Variance multiplier per layer = $r$. After $L$ layers: $\\text{Var} = \\sigma^2 \\cdot r^L$. If $r > 1$: explosion. If $r < 1$: collapse. Proper init sets $r = 1$."
+          }
+        ],
+        "consequence": "Same philosophy as $1/\\sqrt{d_k}$ scaling in attention: control variance at each stage. Xavier/Kaiming for conv, $1/\\sqrt{d_k}$ for attention, LayerNorm for residual streams — all variance control."
+      },
+      {
+        "title": "Why CNN is efficient for low-performance machines",
+        "steps": [
+          {
+            "name": "Parameter efficiency",
+            "math": "Conv: $k^2 C_{\\text{in}} C_{\\text{out}}$ params. For $k=3, C=256$: 590K. FC equivalent: billions. Orders of magnitude smaller."
+          },
+          {
+            "name": "Cache efficiency",
+            "math": "$W$ fits in GPU cache. Patches accessed sequentially. Near-peak memory bandwidth."
+          },
+          {
+            "name": "But FLOPs are NOT small",
+            "math": "FLOPs per layer: $k^2 C_{\\text{in}} C_{\\text{out}} H_{\\text{out}} W_{\\text{out}}$. For $k=3, C=256, 56 \\times 56$: 3.6 GFLOPS/layer."
+          },
+          {
+            "name": "Comparison with transformer",
+            "math": "Attention on $56 \\times 56$ input: $O(n^2 d)$ where $n = 3136$. Attention matrix alone: ~10M entries. CNN is cheaper for high-resolution spatial data."
+          },
+          {
+            "name": "Where CNN loses",
+            "math": "Each layer sees only $k \\times k$ neighborhood. Global patterns require many layers, each adding FLOPs. Transformer: global in one layer."
+          }
+        ],
+        "consequence": "CNN = parameter-efficient + cache-efficient, but not FLOP-efficient. Depthwise separable convolutions (MobileNet) address this by factorizing the conv."
+      },
+      {
+        "title": "Kernels as basis functions — constraining the learned space",
+        "steps": [
+          {
+            "name": "Unconstrained kernel",
+            "math": "Standard: $\\mathbf{h} \\in \\mathbb{R}^{k \\times k}$, all elements free. Maximum flexibility, no domain knowledge."
+          },
+          {
+            "name": "Frequency domain view",
+            "math": "Convolution in space = multiplication in frequency. $\\text{DFT}(\\mathbf{h})$ gives frequency response $H(\\omega)$. Each kernel is a band-pass, low-pass, or high-pass filter."
+          },
+          {
+            "name": "Gabor-parameterized kernels",
+            "math": "$$h(x,y) = \\exp\\!\\left(-\\frac{x'^2 + \\gamma^2 y'^2}{2\\sigma^2}\\right) \\cos\\!\\left(\\frac{2\\pi x'}{\\lambda} + \\psi\\right)$$\nLearn only $\\theta, \\lambda, \\psi, \\gamma, \\sigma$ — 5 params instead of $k^2$."
+          },
+          {
+            "name": "Wavelet-parameterized kernels",
+            "math": "$$h(x) = \\frac{1}{\\sqrt{a}}\\, \\psi\\!\\left(\\frac{x - b}{a}\\right)$$\nLearn scale $a$ and shift $b$. Mother wavelet $\\psi$ is fixed (domain knowledge)."
+          },
+          {
+            "name": "General basis function approach",
+            "math": "$$\\mathbf{h} = \\sum_i \\alpha_i \\, \\phi_i$$\nwhere $\\phi_i$ are basis functions (Fourier, Chebyshev, Legendre, wavelets). Learn only coefficients $\\alpha_i$. Basis encodes structural prior."
+          },
+          {
+            "name": "Hybrid: fixed + free kernels",
+            "math": "In layer with $C_{\\text{out}}$ kernels: fix some to known filters, leave others free. Training only updates free kernels. Choose WHICH patterns the model must detect vs discovers."
+          }
+        ],
+        "consequence": "Kernel parameterization: unconstrained (max flexibility) → basis-constrained (structural priors, fewer params) → fixed (inject known filters). Connects to FOUNDATIONS.INDUCTIVE_BIAS."
+      }
+    ]
+  },
+
+  "key_contrast_with_transformer": {
+    "cnn_approach": "Build correlations HIERARCHICALLY bottom-up. Local features compose through layers. Global emerges from many layers of local composition.",
+    "transformer_approach": "Discover correlations GLOBALLY all-at-once. Any position attends to any other. No forced hierarchy.",
+    "explainability": "CNN: each kernel visualizable, feature maps show where patterns detected, layer hierarchy = abstraction hierarchy. Transformer: attention weights visible but FFN internals opaque.",
+    "tradeoff": "CNN: strong bias = efficient with small data, explainable, forced locality. Transformer: weak bias = needs more data, any pattern discoverable."
+  },
+
+  "signal_processing_bridge": {
+    "fir_filter": "Kernel = learned FIR filter coefficients.",
+    "firs_feeding_firs": "Cascaded layers = cascaded filter banks with nonlinearities. Nonlinearity prevents collapse, creates abstraction hierarchy.",
+    "kernel_size_as_window": "Kernel size $k$ = window length = time-frequency resolution tradeoff (uncertainty principle).",
+    "multi_channel_as_filter_bank": "$C_{\\text{out}}$ kernels = learned filter bank.",
+    "wavelet_connection": "Kernels are wavelet-like (localized, frequency-selective) but unconstrained. Can be constrained to wavelet/Gabor families.",
+    "pooling_as_decimation": "Pooling = downsampling (anti-aliasing not guaranteed).",
+    "scattering_transform": "Mallat's scattering: fixed wavelet cascade, no learning. Provably translation-invariant, deformation-stable."
+  },
+
+  "geometric_properties": [
+    "Translation equivariance: shifting input shifts output by same amount (built-in)",
+    "Receptive field: $\\text{RF} = L(k-1) + 1$ for $L$ layers with kernel $k$",
+    "Feature maps as learned basis functions: each kernel = a direction in feature space",
+    "Piecewise linear regions from ReLU: input-dependent partitioning of representation space"
+  ],
+  "statistical_properties": [
+    "Variance evolution: $\\text{Var}(\\text{out}) = k^2 C_{\\text{in}} \\cdot \\text{Var}(w) \\cdot \\text{Var}(\\text{in})$. Xavier: $\\text{Var}(w) = 1/(k^2 C_{\\text{in}})$. Kaiming: $\\text{Var}(w) = 2/(k^2 C_{\\text{in}})$.",
+    "Mean drift: ReLU shifts mean positive. Without BatchNorm, means accumulate across layers.",
+    "Dead filters: kernels with near-zero activation = wasted capacity.",
+    "Weight sharing implies stationarity: same statistics at all spatial positions."
+  ],
+  "numerical_properties": [
+    "Params per layer: $k^2 C_{\\text{in}} C_{\\text{out}}$. Much smaller than FC.",
+    "FLOPs: $k^2 C_{\\text{in}} C_{\\text{out}} H_{\\text{out}} W_{\\text{out}}$. NOT small — spatial application.",
+    "Cache-friendly: small $W$ reused for all patches. Near-peak bandwidth.",
+    "Gradient is also a convolution (transposed) — same efficiency backward."
+  ],
+
+  "connections": {
+    "prerequisites": ["FOUNDATIONS.GRADIENT_DESCENT", "FOUNDATIONS.INDUCTIVE_BIAS", "FOUNDATIONS.ACTIVATIONS"],
+    "enables": ["CNN.RESNET", "CNN.VIT", "HYBRID.CNN_TRANSFORMER"],
+    "related": [
+      "TRANSFORMER.SELF_ATTENTION — hierarchical composition vs global attention",
+      "TRANSFORMER.LAYER_NORM — same variance control philosophy",
+      "FOUNDATIONS.INDUCTIVE_BIAS — kernel constraints encode domain knowledge",
+      "Signal processing (FIR, wavelets, scattering transform)",
+      "MULTIMODAL.FUSION — CNN as modality-specific feature encoder"
+    ]
+  },
+
+  "artifacts": [],
+  "notes": [
+    "Entry point was signal processing analogy — FIR filters, not image classification",
+    "Math of convolution itself is simple — depth is in cascading properties and kernel design",
+    "Key contrast: CNN builds hierarchy, transformer discovers globally. CNN is more explainable.",
+    "Constraining kernels to basis function families is a powerful tool for encoding domain knowledge",
+    "Favorable for low-performance machines in parameter count and cache, but FLOPs can still be high"
+  ]
+}

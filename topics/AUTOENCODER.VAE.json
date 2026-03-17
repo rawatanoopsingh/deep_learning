@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "AUTOENCODER.VAE",
+  "title": "Variational Autoencoders (VAE)",
+  "parent": "AUTOENCODER",
+  "status": "skeleton",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "Adds a probabilistic twist to autoencoders: the bottleneck is a distribution (mean + variance), not a point. Enables generation of new samples by sampling from the learned distribution. The loss combines reconstruction + KL divergence to the prior. Bridges autoencoders and generative models.",
+  "key_insights": [
+    "Encoder outputs μ and σ (mean and variance of a Gaussian), not a single point z",
+    "z is sampled: z = μ + σ · ε where ε ~ N(0,1) — the 'reparameterization trick' enables gradient flow through sampling",
+    "Loss = reconstruction + β · KL(q(z|x) || p(z)) — forces the learned distribution to stay close to a prior (standard normal)",
+    "Can generate new data by sampling z ~ N(0,I) and decoding — the generative capability",
+    "Latent space is smooth and continuous (unlike basic autoencoders which can have gaps)"
+  ],
+  "mathematical_core": {
+    "encoder": "q(z|x) = N(μ(x), σ²(x)) — encoder outputs distribution parameters",
+    "reparameterization": "z = μ + σ ⊙ ε, ε ~ N(0,I) — enables backprop through sampling",
+    "loss": "L = E_q[log p(x|z)] - KL(q(z|x) || p(z)) — ELBO (evidence lower bound)",
+    "kl_gaussian": "KL(N(μ,σ²) || N(0,1)) = -½ Σ(1 + log σ² - μ² - σ²)"
+  },
+  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+  "connections": {
+    "prerequisites": ["AUTOENCODER.BASIC", "FOUNDATIONS.LOSS_FUNCTIONS — KL divergence"],
+    "enables": ["Generative modeling", "Latent space interpolation"],
+    "related": ["GAN.BASIC — alternative generative approach", "DIFFUSION.BASIC — modern alternative", "FOUNDATIONS.INDUCTIVE_BIAS — VAE's Gaussian assumption is an inductive bias"]
+  },
+  "artifacts": [],
+  "notes": ["Learning plan Week 6 topic"]
+}

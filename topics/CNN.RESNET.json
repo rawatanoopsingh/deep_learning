@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "CNN.RESNET",
+  "title": "ResNet & Deep CNN Architectures",
+  "parent": "CNN",
+  "status": "skeleton",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "ResNet introduced residual connections to CNNs — the same concept used in transformers. Enabled training of 100+ layer networks. Key insight: residuals are not specific to transformers, they are a general architectural principle for deep networks. Also covers: VGG (depth matters), Inception (multi-scale), depthwise separable convolutions (efficiency).",
+  "key_insights": [
+    "Residual connections originated here (2015) — transformers borrowed them (2017)",
+    "Same principle: X_out = X + F(X). Identity shortcut prevents gradient vanishing in deep stacks",
+    "Depthwise separable convolutions: factorize standard conv into depthwise + pointwise for efficiency (MobileNet)",
+    "Batch normalization (BN): normalizes across batch dimension — contrast with LayerNorm which normalizes across features"
+  ],
+  "mathematical_core": {
+    "residual_block": "X_out = X + F(X, W) where F = conv → BN → ReLU → conv → BN",
+    "bn_vs_ln": "BN: normalize across batch dimension (same feature, different samples). LN: normalize across feature dimension (same sample, different features)."
+  },
+  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+  "connections": {
+    "prerequisites": ["CNN.CONVOLUTION", "TRANSFORMER.RESIDUALS — same concept, different domain"],
+    "enables": ["CNN.VIT"],
+    "related": ["TRANSFORMER.LAYER_NORM — BN vs LN tradeoffs"]
+  },
+  "artifacts": [],
+  "notes": ["Residual connections insight from transformer discussion directly transfers here"]
+}

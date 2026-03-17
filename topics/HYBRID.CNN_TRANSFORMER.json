@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "HYBRID.CNN_TRANSFORMER",
+  "title": "CNN + Transformer Hybrid Architectures",
+  "parent": "HYBRID",
+  "status": "initial_intuition",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+
+  "summary": "CNN extracts local hierarchical features (learned FIR filter banks), these become tokens, transformer learns global relationships via attention. Combines CNN's strong local inductive bias with transformer's flexible global pattern learning. Natural architecture for signal/time-series analysis with windowed processing.",
+
+  "key_insights": [
+    "CNN answers 'what is here locally', transformer answers 'how these local things relate globally'",
+    "CNN features as tokens: each spatial/temporal position's CNN output becomes a token for the transformer",
+    "This is not just engineering convenience — it matches how information is structured: local patterns compose into global relationships",
+    "For signal analysis: window the signal → CNN extracts per-window features → transformer attends across windows",
+    "Kernel size = window length = time-frequency resolution tradeoff (uncertainty principle applies)",
+    "The CNN layers act as a learned, hierarchical tokenizer — more principled than arbitrary patching (as in vanilla ViT)"
+  ],
+
+  "mathematical_core": {
+    "pipeline": "x ∈ [B, C, T] → CNN → features ∈ [B, C_out, T'] → reshape → tokens ∈ [B, T', C_out] → Transformer → output",
+    "cnn_stage": "Multiple conv layers with nonlinearity and optional pooling. Each layer: y = σ(W * x + b). Output T' ≤ T due to stride/pooling.",
+    "transformer_stage": "Standard transformer encoder on the CNN features. Self-attention across the T' positions.",
+    "token_dimension": "d_model for transformer = C_out from CNN (or projected via linear layer if they differ)"
+  },
+
+  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+
+  "design_decisions": {
+    "how_many_conv_layers": "More layers = more abstraction before transformer. Fewer = transformer sees lower-level features. Typical: 2-4 conv layers.",
+    "kernel_size": "Determines the local receptive field. For time series at sample rate fs: kernel covering ~10ms captures speech phonemes, ~100ms captures musical notes, ~1s captures rhythmic patterns.",
+    "stride_and_pooling": "Controls the compression ratio: how many CNN output positions per input positions. Higher compression = fewer tokens for transformer = less compute but coarser representation.",
+    "where_to_add_position_info": "After CNN (on the tokens), not before. The CNN doesn't need position info (translation equivariant). The transformer does."
+  },
+
+  "application_patterns": [
+    {
+      "domain": "Signal / time series analysis",
+      "approach": "1D CNN on raw waveform or windowed samples → transformer across temporal positions",
+      "example": "Wav2Vec, Whisper (speech), custom sensor analysis"
+    },
+    {
+      "domain": "Image analysis",
+      "approach": "Conv stem (few layers) → patch from feature maps → transformer",
+      "example": "CoAtNet, early ViT variants with conv stems"
+    },
+    {
+      "domain": "Multimodal with signal input",
+      "approach": "CNN encodes signal modality → transformer cross-attends with text/other modality",
+      "example": "Audio-text models, sensor-to-text systems"
+    }
+  ],
+
+  "connections": {
+    "prerequisites": ["CNN.CONVOLUTION", "TRANSFORMER.SELF_ATTENTION", "TRANSFORMER.POSITIONAL_ENCODING"],
+    "enables": ["Domain-specific signal analysis products", "Efficient tokenization for non-text data"],
+    "related": [
+      "CNN.VIT — ViT is the extreme: no CNN at all, raw patches as tokens",
+      "MULTIMODAL.FUSION — CNN+transformer as one modality encoder feeding into cross-attention",
+      "TRANSFORMER.ENCODER_DECODER — CNN features can serve as encoder output for decoder cross-attention"
+    ]
+  },
+
+  "artifacts": [],
+  "notes": [
+    "Arose from Anoop's signal processing background — FIR filter analogy made CNNs click",
+    "Key design question: where does the CNN end and transformer begin? This boundary determines the locality/globality tradeoff.",
+    "Connection to earlier discussion: 'windowed samples to transformer' idea from assessment is exactly this hybrid pattern"
+  ]
+}

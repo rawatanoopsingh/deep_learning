@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "AUTOENCODER.BASIC",
+  "title": "Autoencoders & Bottleneck Architectures",
+  "parent": "AUTOENCODER",
+  "status": "skeleton",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "Encoder compresses input to a low-dimensional bottleneck, decoder reconstructs from the bottleneck. The bottleneck forces the model to learn a compact, meaningful representation. Used for: dimensionality reduction, anomaly detection (high reconstruction error = anomaly), denoising, feature learning.",
+  "key_insights": [
+    "Architecture: Encoder → bottleneck (z) → Decoder. Loss = reconstruction error (MSE or BCE)",
+    "Information bottleneck: compression forces the model to learn what matters and discard noise",
+    "Anomaly detection: train on normal data only. Anomalies reconstruct poorly → high loss = anomaly signal",
+    "The bottleneck representation z IS the learned feature space — can be used for downstream tasks",
+    "Connects to transformer: masked autoencoder (MAE) uses transformer encoder with random masking"
+  ],
+  "mathematical_core": {
+    "encoder": "z = f_enc(x) — maps input x ∈ ℝⁿ to bottleneck z ∈ ℝᵈ where d << n",
+    "decoder": "x̂ = f_dec(z) — reconstructs from bottleneck",
+    "loss": "L = ||x - x̂||² (MSE reconstruction) or BCE for binary data",
+    "bottleneck": "dim(z) << dim(x) — forces compression"
+  },
+  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+  "connections": {
+    "prerequisites": ["FOUNDATIONS.LOSS_FUNCTIONS", "FOUNDATIONS.GRADIENT_DESCENT"],
+    "enables": ["AUTOENCODER.VAE", "Anomaly detection applications"],
+    "related": ["TRANSFORMER.FFN — expand-then-compress is a per-token bottleneck", "PRODUCTION.DISTILLATION — compression of learned representations"]
+  },
+  "artifacts": [],
+  "notes": ["Directly relevant to anomaly detection use case discussed during assessment. Also: self-attention for hypothesis discovery uses masked autoencoder training objective."]
+}

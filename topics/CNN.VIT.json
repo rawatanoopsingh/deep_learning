@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "CNN.VIT",
+  "title": "Vision Transformer (ViT)",
+  "parent": "CNN",
+  "status": "skeleton",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "Replaced convolutions with self-attention for image processing. Image split into patches (16×16), each patch treated as a token with a linear embedding. Standard transformer encoder applied. Showed that with enough data, transformers outperform CNNs on vision — less inductive bias compensated by more data.",
+  "key_insights": [
+    "Tokenization: split image into fixed-size patches → flatten → linear projection to d_model. Patches = tokens.",
+    "Position embedding is learned (not sine/cosine) — 2D position info for image patches",
+    "[CLS] token prepended for classification output (same as BERT)",
+    "Key result: CNNs have strong local bias (good for small data), ViT has weak bias (needs large data but achieves higher ceiling)",
+    "Directly connects to tokenization decisions for non-language data (your sensor/tabular interest)"
+  ],
+  "mathematical_core": {
+    "patch_embedding": "Image [H,W,C] → patches [N, P²·C] → linear projection [N, d_model]. N = HW/P² patches.",
+    "architecture": "Standard transformer encoder (same blocks as TRANSFORMER.ENCODER_DECODER encoder side)"
+  },
+  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+  "connections": {
+    "prerequisites": ["CNN.CONVOLUTION", "TRANSFORMER.SELF_ATTENTION", "TRANSFORMER.POSITIONAL_ENCODING"],
+    "enables": ["Multimodal architectures (image + text)"],
+    "related": ["TRANSFORMER.VARIANTS — ViT is encoder-only transformer for vision", "FOUNDATIONS.INDUCTIVE_BIAS — less bias + more data vs more bias + less data tradeoff"]
+  },
+  "artifacts": [],
+  "notes": ["Learning plan Week 5 topic. Tokenization strategy for images directly parallels tokenization decisions for time series and tabular data."]
+}

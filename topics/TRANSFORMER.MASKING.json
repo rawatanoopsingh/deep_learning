@@ -1,0 +1,96 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "TRANSFORMER.MASKING",
+  "title": "Masking (Causal & Padding)",
+  "parent": "TRANSFORMER",
+  "status": "covered",
+  "date_created": "2026-03-15",
+  "date_updated": "2026-03-16",
+
+  "summary": "Causal mask sets upper triangle of attention scores to $-\\infty$ before softmax, preventing future-token leakage. Enables parallel training of autoregressive models.",
+
+  "key_insights": [
+    "Without masking, decoder can cheat by looking at future tokens during training",
+    "Set $S[i,j] = -\\infty$ for $j > i$ before softmax. $e^{-\\infty} = 0$ → future positions get zero weight",
+    "Lower triangular pattern: pos 1 sees only itself, pos 2 sees 1–2, etc.",
+    "Enables full sequence in ONE forward pass while causally correct",
+    "Encoder: NO causal mask. Cross-attention: NO mask."
+  ],
+
+  "mathematical_core": {
+    "causal_mask": "$M[i,j] = \\begin{cases} 0 & j \\leq i \\\\ -\\infty & j > i \\end{cases}$. Applied: $S_{\\text{masked}} = S + M$",
+    "padding_mask": "$M[i,j] = \\begin{cases} 0 & \\text{token } j \\text{ is real} \\\\ -\\infty & \\text{token } j \\text{ is padding} \\end{cases}$",
+    "combined": "Both masks additive before softmax"
+  },
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Why $-\\infty$ and not $0$",
+        "steps": [
+          {
+            "name": "Setting score to 0",
+            "math": "$\\text{softmax}([s_1, s_2, 0]) = [e^{s_1}, e^{s_2}, 1]/Z$. Masked position gets weight $1/Z > 0$. Information leaks!"
+          },
+          {
+            "name": "Setting score to $-\\infty$",
+            "math": "$\\text{softmax}([s_1, s_2, -\\infty]) = [e^{s_1}, e^{s_2}, 0]/Z$. Exactly zero. No leakage."
+          },
+          {
+            "name": "In practice",
+            "math": "Use $-10^9$ (float32) or $-10^4$ (float16). Must ensure $e^{-M}$ underflows to 0."
+          }
+        ],
+        "consequence": "Masking must use large negative values to ensure exact exclusion after softmax."
+      },
+      {
+        "title": "Parallel training via masking",
+        "steps": [
+          {
+            "name": "Without masking (naive)",
+            "math": "To predict position $t$: run model on $1\\ldots t-1$. For length $T$: $T$ forward passes. $O(T \\times \\text{cost})$."
+          },
+          {
+            "name": "With causal masking",
+            "math": "Run once on full $[1\\ldots T]$. Mask ensures position $t$ only attends to $1\\ldots t$. All $T$ predictions simultaneously. $O(1 \\times \\text{cost})$."
+          },
+          {
+            "name": "Correctness",
+            "math": "At position $t$: output $= \\sum_{j \\leq t} \\alpha_j V_j$. Identical to feeding only $1\\ldots t$. Mask simulates sequential in parallel."
+          }
+        ],
+        "consequence": "$T\\times$ speedup during training. This is why transformers train faster than RNNs."
+      },
+      {
+        "title": "Gradient flow through masked positions",
+        "math": "Masked: $\\alpha_j = 0$. $\\frac{\\partial \\alpha_j}{\\partial s_j} = \\alpha_j(1-\\alpha_j) = 0$. Zero gradient to/from masked positions. Hard information barrier in both forward and backward pass.",
+        "consequence": "Masking is architecturally equivalent to positions not existing."
+      }
+    ]
+  },
+
+  "geometric_properties": [
+    "Causal mask = directed graph: position $i$ receives from $j \\leq i$ only",
+    "Lower triangular attention matrix = DAG over the sequence",
+    "Early positions have less context than later ones"
+  ],
+  "statistical_properties": [
+    "Early positions (few valid keys) have higher attention entropy",
+    "Last position sees everything — typically lowest loss",
+    "Per-position loss should decrease with position (more context = better prediction)"
+  ],
+  "numerical_properties": [
+    "Mask is constant tensor — no params, no compute cost",
+    "Mask value: $-10^9$ (float32) or $-10^4$ (float16)",
+    "Precomputable for given sequence length, reused across batches"
+  ],
+
+  "connections": {
+    "prerequisites": ["TRANSFORMER.SELF_ATTENTION"],
+    "enables": ["TRANSFORMER.ENCODER_DECODER — causal mask makes decoder autoregressive"],
+    "related": ["TRANSFORMER.TRAINING — teacher forcing relies on masking"]
+  },
+
+  "artifacts": [{"ref": "artifacts/docs/transformer_calculations.docx", "section": "Step 6c"}],
+  "notes": []
+}

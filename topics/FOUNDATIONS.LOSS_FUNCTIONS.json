@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "FOUNDATIONS.LOSS_FUNCTIONS",
+  "title": "Loss Functions & Training Objectives",
+  "parent": "FOUNDATIONS",
+  "status": "skeleton",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "The loss function defines what 'correct' means. Cross-entropy for classification/generation, MSE for regression, contrastive for similarity, reconstruction for autoencoders. Choice of loss is an architectural decision — it determines the output layer shape and what the model optimizes for.",
+  "key_insights": [],
+  "mathematical_core": {
+    "cross_entropy": "L = -Σ y_i log(q_i) — classification, language modeling",
+    "mse": "L = (1/n) Σ (ŷ_i - y_i)² — regression, reconstruction",
+    "contrastive": "L = -log(exp(sim(a,b⁺)/τ) / Σ exp(sim(a,b)/τ)) — similarity learning",
+    "kl_divergence": "D_KL(p||q) = Σ p(x) log(p(x)/q(x)) — distribution matching",
+    "connection": "Cross-entropy minimization = forward KL divergence minimization (from FOUNDATIONS.INDUCTIVE_BIAS)"
+  },
+  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+  "connections": {
+    "prerequisites": ["Probability basics", "FOUNDATIONS.INDUCTIVE_BIAS"],
+    "enables": ["TRANSFORMER.TRAINING", "CNN.TRAINING", "AUTOENCODER — reconstruction loss", "GAN — adversarial loss"],
+    "related": ["PRODUCTION.DISTILLATION — uses KL divergence on soft labels"]
+  },
+  "artifacts": [],
+  "notes": ["Custom loss functions for specific business objectives is a key skill for application design"]
+}

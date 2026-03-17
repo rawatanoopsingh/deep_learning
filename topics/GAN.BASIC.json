@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "GAN.BASIC",
+  "title": "Generative Adversarial Networks (GANs)",
+  "parent": "GAN",
+  "status": "skeleton",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "Two networks trained adversarially: Generator creates fake data, Discriminator distinguishes real from fake. The competition drives both to improve. Training is notoriously unstable (mode collapse, oscillation). Architectural innovations (DCGAN, StyleGAN, Wasserstein GAN) address stability.",
+  "key_insights": [
+    "Minimax game: Generator minimizes, Discriminator maximizes V(D,G) = E[log D(x)] + E[log(1-D(G(z)))]",
+    "Generator never sees real data directly — learns only through discriminator's feedback",
+    "Mode collapse: generator produces limited variety (finds one thing that fools discriminator and repeats it)",
+    "Wasserstein GAN: replace JS divergence with Earth Mover distance — smoother gradients, more stable training",
+    "GANs produce very sharp outputs (vs VAEs which tend to be blurry) because adversarial loss penalizes unrealism"
+  ],
+  "mathematical_core": {
+    "objective": "min_G max_D V(D,G) = E_x[log D(x)] + E_z[log(1-D(G(z)))]",
+    "generator": "G: z → x̂, maps random noise z ~ N(0,I) to synthetic data",
+    "discriminator": "D: x → [0,1], probability that input is real",
+    "nash_equilibrium": "Optimal: D(x) = 0.5 for all x (can't tell real from fake), G distribution matches real data"
+  },
+  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+  "connections": {
+    "prerequisites": ["FOUNDATIONS.LOSS_FUNCTIONS", "FOUNDATIONS.GRADIENT_DESCENT"],
+    "enables": ["Image generation", "Data augmentation", "Domain adaptation"],
+    "related": ["AUTOENCODER.VAE — alternative generative approach", "DIFFUSION.BASIC — modern replacement for many GAN applications"]
+  },
+  "artifacts": [],
+  "notes": ["Learning plan Week 7 topic"]
+}

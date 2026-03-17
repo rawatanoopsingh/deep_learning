@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "FOUNDATIONS.GRADIENT_DESCENT",
+  "title": "Gradient Descent & Backpropagation",
+  "parent": "FOUNDATIONS",
+  "status": "skeleton",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+  "summary": "The engine that drives all learning. Compute loss, compute gradients via chain rule (backprop), update parameters in the direction that reduces loss. Not the same as autograd implementation — the conceptual level matters for architecture design.",
+  "key_insights": [],
+  "mathematical_core": {
+    "update_rule": "θ_{t+1} = θ_t - η · ∇L(θ_t)",
+    "chain_rule": "∂L/∂θ = ∂L/∂y · ∂y/∂h · ∂h/∂θ (applied recursively through layers)",
+    "backprop": "Reverse-mode automatic differentiation — compute all gradients in one backward pass"
+  },
+  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+  "connections": {
+    "prerequisites": ["Calculus (partial derivatives)", "Linear algebra"],
+    "enables": ["FOUNDATIONS.BATCHING_SGD", "TRANSFORMER.TRAINING", "All training topics"],
+    "related": ["FOUNDATIONS.LOSS_FUNCTIONS"]
+  },
+  "artifacts": [],
+  "notes": ["Anoop's stance: autograd internals are engine-level, not needed for architecture innovation. Conceptual understanding of gradient flow IS needed for designing trainable architectures."]
+}

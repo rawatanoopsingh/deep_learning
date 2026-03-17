@@ -1,0 +1,78 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "TRANSFORMER.VARIANTS",
+  "title": "Architecture Variants (Encoder-Only, Decoder-Only, Encoder-Decoder)",
+  "parent": "TRANSFORMER",
+  "status": "covered",
+  "date_created": "2026-03-15",
+  "date_updated": "2026-03-15",
+
+  "summary": "Three transformer variants. Encoder-only (BERT): bidirectional, understanding. Decoder-only (GPT): causal, generation. Encoder-decoder (T5): sequence-to-sequence. Selection depends on task structure.",
+
+  "key_insights": [
+    "Encoder-only: bidirectional, no generation. Classification, retrieval, similarity, anomaly detection, knowledge storage",
+    "Decoder-only: causal, generation by continuation. Conversation and story completion are architecturally identical",
+    "Encoder-decoder: distinct input→output transformation. Translation, summarization",
+    "Decision tree: (1) Generate? No → encoder-only. (2) Distinct I/O? Yes → enc-dec. (3) Same stream → dec-only",
+    "Encoder-only = best for knowledge storage/retrieval (richest bidirectional representation)"
+  ],
+
+  "mathematical_core": {
+    "encoder_only": "Output = f_classify(Encoder(X)) or Output = Encoder(X) as embedding",
+    "decoder_only": "P(x_t | x_{<t}) = softmax(Decoder(x_{<t})) — next token prediction, causal mask always applied",
+    "encoder_decoder": "P(y_t | y_{<t}, X) = softmax(Decoder(y_{<t}, Encoder(X))) — conditioned on encoded input"
+  },
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Bidirectional vs causal — information-theoretic perspective",
+        "steps": [
+          {
+            "name": "Encoder (bidirectional)",
+            "math": "Token i's representation h_i = f(x_1, ..., x_n) — conditioned on ALL tokens. Maximum mutual information I(h_i; X) with the full input."
+          },
+          {
+            "name": "Decoder (causal)",
+            "math": "Token i's representation h_i = f(x_1, ..., x_i) — conditioned only on past. I(h_i; X) ≤ I(h_i; x_1..x_i) < I(h_i; x_1..x_n). Strictly less information."
+          },
+          {
+            "name": "Consequence",
+            "math": "For understanding tasks (where you need maximum info about the input), encoder-only is strictly better. For generation tasks, the causal constraint is necessary (can't condition on future tokens you haven't generated yet)."
+          }
+        ],
+        "consequence": "The bidirectional/causal choice is not a quality tradeoff — it's a constraint imposed by the task. Understanding tasks allow bidirectional. Generation tasks require causal."
+      },
+      {
+        "title": "Parameter efficiency comparison",
+        "math": "For same total budget P: encoder-only uses all P for understanding. Decoder-only uses all P for generation. Encoder-decoder splits: ~40% encoder + ~53% decoder + ~7% embeddings. The enc-dec model has less capacity per function but covers both comprehension and generation.",
+        "consequence": "For tasks that need ONLY understanding or ONLY generation, a single-stack model uses parameters more efficiently than encoder-decoder."
+      }
+    ]
+  },
+
+  "comparison": {
+    "encoder_only": {"examples": "BERT, RoBERTa, sentence-transformers", "attention": "Full bidirectional", "strength": "Deep understanding", "weakness": "Cannot generate"},
+    "decoder_only": {"examples": "GPT, LLaMA, Claude", "attention": "Causal (masked)", "strength": "Flexible generation", "weakness": "Limited input comprehension"},
+    "encoder_decoder": {"examples": "T5, BART, Whisper", "attention": "Bidirectional + causal + cross", "strength": "I/O transformation", "weakness": "More complex, ~33% more params"}
+  },
+
+  "connections": {
+    "prerequisites": ["TRANSFORMER.ENCODER_DECODER"],
+    "enables": ["Application architecture selection", "PRODUCTION.PRUNING"],
+    "related": ["FOUNDATIONS.INDUCTIVE_BIAS — variant selection = choosing inductive bias for task"]
+  },
+
+  "application_examples": [
+    {"task": "Anomaly detection", "variant": "Encoder-only", "reason": "Understand input, no generation"},
+    {"task": "Knowledge storage/retrieval", "variant": "Encoder-only", "reason": "Richest representation for embedding"},
+    {"task": "Conversation", "variant": "Decoder-only", "reason": "Same-stream continuation"},
+    {"task": "Translation", "variant": "Encoder-decoder", "reason": "Distinct source and target"},
+    {"task": "Sensor → diagnosis", "variant": "Encoder-decoder", "reason": "Different modalities"}
+  ],
+
+  "artifacts": [
+    {"ref": "artifacts/docs/encoder_decoder_structure.docx", "section": "Step 5"}
+  ],
+  "notes": []
+}

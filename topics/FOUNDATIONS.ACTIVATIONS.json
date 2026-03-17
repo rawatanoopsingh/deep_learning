@@ -1,0 +1,197 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "FOUNDATIONS.ACTIVATIONS",
+  "title": "Activation Functions — ReLU, GELU, Sigmoid, Tanh, SwiGLU",
+  "parent": "FOUNDATIONS",
+  "status": "initial_intuition",
+  "date_created": "2026-03-16",
+  "date_updated": "2026-03-16",
+
+  "summary": "Nonlinear functions applied element-wise between linear layers. Without them, any stack of linear layers collapses to a single linear layer. They determine gradient flow, sparsity, and expressivity. ReLU is simplest (threshold), GELU is smooth (standard in transformers), SwiGLU is gated (state-of-art LLMs).",
+
+  "key_insights": [
+    "Without activation: N linear layers = 1 linear layer (matrix product). Nonlinearity is what makes depth meaningful.",
+    "Each activation creates a different geometry of the learned function: ReLU = piecewise linear, GELU = smooth, sigmoid = bounded.",
+    "The choice affects: gradient flow (can gradients pass?), sparsity (how many neurons are 'off'?), and expressivity (how complex a function can the network represent?).",
+    "Dead neuron problem: ReLU neurons that always output zero can never recover (zero gradient). GELU avoids this.",
+    "Gating (SwiGLU): multiply two parallel pathways — one determines 'what to keep', other determines 'what to pass'. More expressive but 50% more parameters."
+  ],
+
+  "mathematical_core": {
+    "relu": "$\\text{ReLU}(x) = \\max(0, x)$",
+    "relu_gradient": "$\\frac{\\partial}{\\partial x}\\text{ReLU}(x) = \\begin{cases} 1 & x > 0 \\\\ 0 & x < 0 \\end{cases}$",
+    "gelu": "$\\text{GELU}(x) = x \\cdot \\Phi(x)$ where $\\Phi(x) = \\frac{1}{2}[1 + \\text{erf}(x/\\sqrt{2})]$ is the Gaussian CDF",
+    "gelu_approx": "$\\text{GELU}(x) \\approx 0.5x(1 + \\tanh[\\sqrt{2/\\pi}(x + 0.044715x^3)])$",
+    "gelu_gradient": "$\\frac{\\partial}{\\partial x}\\text{GELU}(x) = \\Phi(x) + x \\cdot \\phi(x)$ where $\\phi(x) = \\frac{1}{\\sqrt{2\\pi}}e^{-x^2/2}$",
+    "sigmoid": "$\\sigma(x) = \\frac{1}{1+e^{-x}}$, range $(0,1)$",
+    "sigmoid_gradient": "$\\sigma'(x) = \\sigma(x)(1 - \\sigma(x))$, max at $x=0$ where $\\sigma'(0) = 0.25$",
+    "tanh": "$\\tanh(x) = \\frac{e^x - e^{-x}}{e^x + e^{-x}}$, range $(-1, 1)$. Related: $\\tanh(x) = 2\\sigma(2x) - 1$",
+    "swish": "$\\text{Swish}(x) = x \\cdot \\sigma(x)$ — smooth approximation to ReLU, self-gated",
+    "swiglu": "$\\text{SwiGLU}(x) = \\text{Swish}(xW_1) \\odot (xW_3)$ — gated: one path gates, other provides content. Used in LLaMA, PaLM."
+  },
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Why nonlinearity is necessary — the collapse theorem",
+        "steps": [
+          {
+            "name": "Two linear layers",
+            "math": "$y = W_2(W_1 x + b_1) + b_2 = W_2 W_1 x + W_2 b_1 + b_2 = W_{\\text{eff}} x + b_{\\text{eff}}$"
+          },
+          {
+            "name": "N linear layers",
+            "math": "$y = W_N \\cdots W_2 W_1 x + \\text{bias} = W_{\\text{combined}} x + b_{\\text{combined}}$"
+          },
+          {
+            "name": "Consequence",
+            "math": "Any number of stacked linear layers is equivalent to a SINGLE linear layer. Depth adds NO representational power without nonlinearity."
+          }
+        ],
+        "consequence": "Nonlinearity between layers is the mechanism that makes depth meaningful. This applies equally to CNNs (ReLU between conv layers) and transformers (GELU in FFN)."
+      },
+      {
+        "title": "ReLU — piecewise linear geometry",
+        "steps": [
+          {
+            "name": "What ReLU does geometrically",
+            "math": "$\\text{ReLU}(x) = \\max(0, x)$ folds the negative half-space onto zero. In $d$ dimensions, each neuron creates a hyperplane boundary. On one side: output = input (identity). Other side: output = 0 (projection)."
+          },
+          {
+            "name": "Piecewise linear regions",
+            "math": "A single ReLU layer with $d$ neurons partitions input space into up to $2^d$ regions. In each region, the network computes a different linear function. $L$ layers: up to $2^{Ld}$ regions."
+          },
+          {
+            "name": "Expressivity from depth",
+            "math": "1 layer, 100 neurons: up to $2^{100}$ linear regions. 2 layers, 50 neurons each: up to $2^{100}$ regions too, but the boundaries are MORE COMPLEX (compositions of hyperplanes). Depth gives qualitatively different boundaries, not just more of them."
+          },
+          {
+            "name": "Dead neuron problem",
+            "math": "If $W x + b < 0$ for ALL training inputs, gradient $= 0$ for that neuron. With gradient-based learning, it can never recover. Fraction of dead neurons grows during training if learning rate is too high (large weight updates push biases negative)."
+          },
+          {
+            "name": "Leaky ReLU mitigation",
+            "math": "$\\text{LeakyReLU}(x) = \\max(\\alpha x, x)$ with $\\alpha = 0.01$. Small negative slope means gradient is never exactly zero. Dead neurons can recover."
+          }
+        ],
+        "consequence": "ReLU is simple and creates interpretable piecewise-linear functions. But dead neurons are a real practical problem. Monitor: fraction of neurons with zero activation across the training set."
+      },
+      {
+        "title": "GELU — why transformers prefer smooth activation",
+        "steps": [
+          {
+            "name": "Probabilistic interpretation",
+            "math": "$\\text{GELU}(x) = x \\cdot P(X \\leq x)$ where $X \\sim \\mathcal{N}(0,1)$. The input is scaled by the probability that a standard normal is less than it. Large positive $x$: $P \\approx 1$, so GELU$(x) \\approx x$. Large negative $x$: $P \\approx 0$, so GELU$(x) \\approx 0$. Near zero: smooth transition."
+          },
+          {
+            "name": "Comparison with ReLU",
+            "math": "ReLU: hard threshold at $x=0$, discontinuous gradient. GELU: smooth transition, gradient is always nonzero. For $x = -1$: ReLU gives 0 (dead), GELU gives $\\approx -0.16$ (small but nonzero signal)."
+          },
+          {
+            "name": "Why transformers use GELU",
+            "math": "Attention scores are softmax outputs — continuous, smooth. FFN should be similarly smooth for consistent gradient flow. ReLU's hard threshold creates discontinuities that can interact badly with attention's smooth gradients."
+          },
+          {
+            "name": "Gradient properties",
+            "math": "$\\text{GELU}'(x) = \\Phi(x) + x\\phi(x)$. At $x=0$: $\\text{GELU}'(0) = 0.5$ (vs ReLU: undefined). For large $|x|$: approaches 1 (positive) or 0 (negative), like ReLU but smoothly."
+          },
+          {
+            "name": "No dead neurons",
+            "math": "$\\text{GELU}'(x) > 0$ for all $x > -\\infty$. There is always a nonzero gradient, so no neuron is permanently dead. This is the main practical advantage over ReLU in deep networks."
+          }
+        ],
+        "consequence": "GELU is now standard in transformers (BERT, GPT, etc.) because: smooth gradient flow, no dead neurons, probabilistic interpretation. The cost: slightly more computation than ReLU's simple max(0,x)."
+      },
+      {
+        "title": "Sigmoid and tanh — saturation and vanishing gradients",
+        "steps": [
+          {
+            "name": "Sigmoid shape",
+            "math": "$\\sigma(x) = 1/(1+e^{-x})$. Squashes any input to $(0,1)$. Useful for: output probabilities, gates (LSTM, GRU)."
+          },
+          {
+            "name": "Gradient saturation",
+            "math": "$\\sigma'(x) = \\sigma(x)(1-\\sigma(x))$. Maximum at $x=0$: $\\sigma'(0) = 0.25$. For $|x| > 5$: $\\sigma'(x) < 0.007$. The gradient nearly vanishes for large or small inputs."
+          },
+          {
+            "name": "Vanishing gradient problem",
+            "math": "Through $L$ sigmoid layers: gradient scales as $(0.25)^L$. After 10 layers: $0.25^{10} \\approx 10^{-6}$. This is why deep networks with sigmoid/tanh don't train — gradients vanish exponentially with depth."
+          },
+          {
+            "name": "Why ReLU solved this",
+            "math": "ReLU gradient = 1 for active neurons. Through $L$ ReLU layers: gradient scales as $1^L = 1$ (for active paths). No exponential decay. This is why ReLU enabled deep networks (2012 AlexNet breakthrough)."
+          },
+          {
+            "name": "Modern uses of sigmoid",
+            "math": "Sigmoid is still used for: gates in LSTM/GRU, binary classification output, attention gates in gated architectures. NOT as a hidden layer activation (replaced by ReLU/GELU)."
+          }
+        ],
+        "consequence": "Sigmoid/tanh were the original activations but cause vanishing gradients in deep networks. ReLU solved this (gradient = 1 for active neurons). GELU refined it (smooth, no dead neurons). Sigmoid survives only in gating mechanisms."
+      },
+      {
+        "title": "SwiGLU — gated activation for state-of-art LLMs",
+        "steps": [
+          {
+            "name": "Gating concept",
+            "math": "Instead of $\\sigma(Wx + b)$, use TWO parallel linear projections: one produces the 'content', other produces the 'gate'. Output = content $\\odot$ gate. The gate SELECTS which content to pass."
+          },
+          {
+            "name": "SwiGLU formula",
+            "math": "$\\text{SwiGLU}(x) = \\text{Swish}(xW_1 + b_1) \\odot (xW_3 + b_3)$ where Swish$(x) = x \\cdot \\sigma(x)$. Note: THREE weight matrices ($W_1, W_3$ for the two paths, $W_2$ for output compression), not two."
+          },
+          {
+            "name": "Parameter cost",
+            "math": "Standard FFN: $2 \\times d \\times d_{ff}$ params. SwiGLU FFN: $3 \\times d \\times d_{ff}$ params (50% more). In practice, $d_{ff}$ is reduced to compensate: SwiGLU with $d_{ff} = 2.67d$ has similar param count to standard with $d_{ff} = 4d$."
+          },
+          {
+            "name": "Why it works better",
+            "math": "The gate pathway learns WHEN to activate. The content pathway learns WHAT to output. Separation of 'what' and 'when' gives more expressive power per parameter. Empirically: lower perplexity for same model size."
+          }
+        ],
+        "consequence": "SwiGLU is now standard in modern LLMs (LLaMA, PaLM, Mistral). It trades 50% more FFN params for better quality. The gating principle (separate what from when) is a general architectural idea that appears in LSTM gates, attention gates, and mixture-of-experts routing."
+      }
+    ],
+    "worked_examples": [
+      {
+        "title": "Numerical comparison at key values",
+        "note": "x = -2: ReLU=0, GELU=-0.045, sigmoid=0.119, tanh=-0.964. x = 0: ReLU=0, GELU=0, sigmoid=0.5, tanh=0. x = 2: ReLU=2, GELU=1.955, sigmoid=0.881, tanh=0.964."
+      }
+    ]
+  },
+
+  "geometric_properties": [
+    "ReLU creates piecewise linear decision boundaries — each neuron is a hyperplane fold",
+    "GELU creates smooth decision boundaries — better for gradient-based optimization on smooth loss landscapes",
+    "Sigmoid/tanh squash to bounded range — geometric contraction of the representation space",
+    "SwiGLU creates multiplicative interactions — richer function class than additive activations"
+  ],
+  "statistical_properties": [
+    "ReLU: output mean > 0 (positive bias), variance halved. Need Kaiming init to compensate.",
+    "GELU: output mean slightly positive, variance slightly less than input. Closer to mean-preserving.",
+    "Sigmoid: output mean = 0.5, max gradient = 0.25. Gradients through $L$ layers scale as $0.25^L$.",
+    "Monitor: activation distribution at each layer. Should be neither saturated (all near 0 or 1) nor collapsed (all near same value)."
+  ],
+  "numerical_properties": [
+    "ReLU: trivially cheap — one comparison. No exp() or division.",
+    "GELU: requires erf() or the tanh approximation. ~5x more expensive than ReLU per element. Negligible in context of matmul costs.",
+    "Sigmoid/tanh: require exp(). In float16, $e^x$ overflows for $x > 11$. Need clipping.",
+    "SwiGLU: two parallel matmuls + element-wise multiply. ~50% more FFN FLOPs."
+  ],
+
+  "connections": {
+    "prerequisites": ["FOUNDATIONS.GRADIENT_DESCENT"],
+    "enables": ["TRANSFORMER.FFN", "CNN.CONVOLUTION", "RNN.BASICS — LSTM/GRU gates use sigmoid"],
+    "related": [
+      "FOUNDATIONS.INDUCTIVE_BIAS — activation choice is an architectural decision that shapes the function class",
+      "CNN.CONVOLUTION — ReLU between conv layers is what makes cascading meaningful (cascade collapse)",
+      "TRANSFORMER.SELF_ATTENTION — softmax is itself an activation on attention scores"
+    ]
+  },
+
+  "artifacts": [],
+  "notes": [
+    "Historically: sigmoid → tanh → ReLU → GELU → SwiGLU. Each solved a problem of the previous.",
+    "ReLU enabled deep networks (2012). GELU enabled stable transformer training. SwiGLU pushed quality further.",
+    "The gating principle in SwiGLU is the same concept as LSTM forget/input gates — separate control from content."
+  ]
+}

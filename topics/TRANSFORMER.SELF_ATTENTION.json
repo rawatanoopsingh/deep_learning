@@ -1,0 +1,124 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "TRANSFORMER.SELF_ATTENTION",
+  "title": "Self-Attention (Q/K/V Mechanics)",
+  "parent": "TRANSFORMER",
+  "status": "solid",
+  "date_created": "2026-03-15",
+  "date_updated": "2026-03-16",
+
+  "summary": "Core transformer operation. Input is projected into Q, K, V via learned matrices. Dot product $QK^\\top$ measures compatibility, scaled by $\\sqrt{d_k}$ to prevent softmax saturation, softmax converts to probability distribution, weighted sum of V produces contextualized output.",
+
+  "key_insights": [
+    "Q/K/V are projections that extract different aspects: Q asks, K advertises, V holds content",
+    "Dot product = alignment/correlation between query and key vectors",
+    "Scaling by $\\sqrt{d_k}$ prevents large dot products from pushing softmax into near-one-hot",
+    "Softmax converts raw scores to probability distribution (rows sum to 1)",
+    "Output for each token is a weighted average of all value vectors — creates contextualized representations",
+    "Self-attention is permutation-invariant — no inherent notion of order (→ need positional encoding)"
+  ],
+
+  "mathematical_core": {
+    "formula": "$$\\text{Attention}(Q,K,V) = \\text{softmax}\\!\\left(\\frac{QK^\\top}{\\sqrt{d_k}}\\right) V$$",
+    "dimensions": {
+      "input": "$[B, n, d_{\\text{model}}]$",
+      "Q_K_V": "each $[B, n, d_{\\text{model}}]$ after projection, then $[B, h, n, d_k]$ per head",
+      "score_matrix": "$[B, h, n, n]$",
+      "output": "$[B, h, n, d_k]$ per head, then $[B, n, d_{\\text{model}}]$ after concat"
+    },
+    "parameters": "$W_Q, W_K, W_V$ each $\\in \\mathbb{R}^{d_{\\text{model}} \\times d_{\\text{model}}}$",
+    "complexity": "$O(n^2 \\cdot d_k)$ per head for score computation"
+  },
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Why 1/√d_k — Complete causal chain from unscaled dot products to training failure",
+        "steps": [
+          {
+            "name": "1. Dot products grow with d_k",
+            "setup": "$Q_i, K_i$ i.i.d., zero-mean, variance 1",
+            "math": "$s = Q \\cdot K = \\sum_{i=1}^{d_k} Q_i K_i$. Each term: $\\mathbb{E}[Q_i K_i] = 0$, $\\text{Var}(Q_i K_i) = 1$. By independence: $\\text{Var}(s) = d_k$",
+            "result": "Score magnitude grows as $\\sqrt{d_k}$. For $d_k = 64$, std dev $\\approx 8$."
+          },
+          {
+            "name": "2. Large scores → softmax saturation",
+            "math": "$\\alpha_j = \\frac{e^{s_j}}{\\sum_k e^{s_k}}$. When $\\text{Var}(s)$ is large, one $s_{j^*} \\gg$ others with high probability.",
+            "result": "$\\alpha_{j^*} \\approx 1$, all other $\\alpha_k \\approx 0$. Softmax becomes near one-hot."
+          },
+          {
+            "name": "3. Saturation → vanishing gradients through softmax",
+            "math": "$\\frac{\\partial \\alpha_j}{\\partial s_l} = \\alpha_j(\\delta_{jl} - \\alpha_l)$. In saturated regime: $\\alpha_{j^*} \\approx 1$, all others $\\approx 0$. All four cases give $\\frac{\\partial \\alpha}{\\partial s} \\approx 0$.",
+            "result": "ALL partial derivatives $\\approx 0$. Gradients through softmax vanish completely."
+          },
+          {
+            "name": "4. Attention degenerates to hard lookup",
+            "math": "$\\text{out} = \\sum_j \\alpha_j V_j \\approx V_{j^*}$ (single value selected)",
+            "result": "No nuanced mixing. Cannot adjust which key to attend to (gradients dead). Brittle discrete lookup."
+          },
+          {
+            "name": "5. Compounds across layers",
+            "math": "$J_{\\text{total}} = J_L \\cdot J_{L-1} \\cdots J_1$. Each $J$ has near-zero entries from saturated softmax.",
+            "result": "Product of near-zero Jacobians → classic vanishing gradient across depth."
+          },
+          {
+            "name": "6. Scaling fixes everything",
+            "math": "$$\\tilde{s}_j = \\frac{Q \\cdot K_j}{\\sqrt{d_k}} \\implies \\text{Var}(\\tilde{s}_j) = \\frac{1}{d_k} \\cdot d_k = 1$$",
+            "result": "Scores in moderate range, softmax stays soft, gradients flow, attention remains expressive."
+          }
+        ],
+        "summary": "$1/\\sqrt{d_k}$ is a variance-normalizing, gradient-preserving, expressivity-protecting temperature control.",
+        "connects_to": "Xavier/Kaiming initialization — same philosophy of variance control at each layer"
+      },
+      {
+        "title": "Softmax Jacobian structure",
+        "math": "$$\\frac{\\partial \\alpha_j}{\\partial s_l} = \\alpha_j(\\delta_{jl} - \\alpha_l)$$\nThis is a rank-1 perturbation of a diagonal matrix: $J = \\text{diag}(\\alpha) - \\alpha \\alpha^\\top$",
+        "consequence": "Eigenvalues bounded by $\\max(\\alpha_i)(1 - \\max(\\alpha_i))$. Maximum gradient flow when attention is uniform ($\\alpha = 1/n$). Minimum when peaked.",
+        "status": "placeholder — derive eigenvalue bounds formally"
+      }
+    ],
+    "worked_examples": [
+      {
+        "title": "4-token attention computation",
+        "reference": "artifacts/docs/transformer_calculations.docx, Step 6",
+        "note": "Full numerical walkthrough with Q,K matrices, raw scores, scaling, masking, softmax, value retrieval"
+      }
+    ]
+  },
+
+  "geometric_properties": [
+    "Q and K vectors should be well-distributed in $d_k$ space — collapse means uniform (useless) attention",
+    "Monitor average cosine similarity between Q vectors per head",
+    "Output vectors should not all converge (representation collapse)",
+    "After scaling, score distribution should have variance $\\approx 1$ — verify as diagnostic"
+  ],
+  "statistical_properties": [
+    "Attention entropy $H = -\\sum_{ij} A_{ij} \\log A_{ij}$ — high = uniform, low = peaked",
+    "Very low entropy may indicate saturation even with scaling",
+    "Monitor $\\|Q\\|, \\|K\\|$ norm distributions — varying norms cause attention dominated by high-norm positions"
+  ],
+  "numerical_properties": [
+    "$O(n^2 \\cdot d_k)$ per head — quadratic bottleneck",
+    "Softmax stability: subtract $\\max(S_{\\text{row}})$ before $\\exp()$ to prevent overflow",
+    "float16: scores $> 65504$ overflow to Inf",
+    "Without scaling at $d_k = 64$: score std $\\approx 8$, softmax inputs in $[-24, +24]$ — deep saturation"
+  ],
+
+  "connections": {
+    "prerequisites": ["Linear algebra (matrix multiplication)", "Softmax function", "Variance of sums of random variables"],
+    "enables": ["TRANSFORMER.MULTI_HEAD", "TRANSFORMER.CROSS_ATTENTION"],
+    "related": [
+      "TRANSFORMER.POSITIONAL_ENCODING — needed because self-attention is permutation-invariant",
+      "Xavier/Kaiming initialization — same variance control philosophy",
+      "Softmax temperature — $1/\\sqrt{d_k}$ is fixed temperature; could be learned"
+    ]
+  },
+
+  "artifacts": [
+    {"ref": "artifacts/docs/transformer_calculations.docx", "section": "Step 6"}
+  ],
+  "notes": [
+    "Scaling derivation initially missed in assessment — understood after guided exploration",
+    "Future: connection to Xavier/Kaiming init, learned temperature parameters"
+  ]
+}

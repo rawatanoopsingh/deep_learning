@@ -1,0 +1,10 @@
+.DS_Store
+*.command
+DL Knowledge Graph.app/
+setup.py
+patch_arch.py
+fix_arch.py
+copy_svgs.py
+setup_gh_pages.py
+viewer_boot.html
+SETUP_NOTE.html

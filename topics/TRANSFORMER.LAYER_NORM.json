@@ -1,0 +1,113 @@
+{
+  "schema_version": "1.1",
+  "topic_id": "TRANSFORMER.LAYER_NORM",
+  "title": "Layer Normalization",
+  "parent": "TRANSFORMER",
+  "status": "deepened",
+  "date_created": "2026-03-15",
+  "date_updated": "2026-03-16",
+
+  "summary": "Normalize across $d_{\\text{model}}$ per token, reparameterize with learned $\\gamma$ (scale) and $\\beta$ (shift). Each block's LN has separate $\\gamma/\\beta$ because it sees different accumulated residual stream statistics.",
+
+  "key_insights": [
+    "Two phases: normalize (subtract mean, divide by std) then reparameterize (scale by $\\gamma$, shift by $\\beta$)",
+    "$\\gamma, \\beta \\in \\mathbb{R}^{d_{\\text{model}}}$ — per dimension, shared across all tokens",
+    "NOT redundant with embeddings: by block $N$, input is $X_0 + \\sum \\Delta_i$ — no single param controls this",
+    "Pre-LN (modern): normalize BEFORE sub-layer. Post-LN (original): after. Pre-LN more stable."
+  ],
+
+  "mathematical_core": {
+    "formula": "$$\\text{LN}(x) = \\gamma \\odot \\frac{x - \\mu}{\\sqrt{\\sigma^2 + \\epsilon}} + \\beta$$",
+    "mean": "$\\mu = \\frac{1}{d}\\sum_i x_i$ — per token, across $d_{\\text{model}}$",
+    "variance": "$\\sigma^2 = \\frac{1}{d}\\sum_i (x_i - \\mu)^2$",
+    "parameters": "$\\gamma, \\beta \\in \\mathbb{R}^{d_{\\text{model}}}$ (learned per LN instance)"
+  },
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Jacobian of LayerNorm — how gradients flow through normalization",
+        "steps": [
+          {
+            "name": "Normalized output",
+            "math": "$\\hat{x}_i = (x_i - \\mu) / \\sigma$"
+          },
+          {
+            "name": "Derivative $\\partial \\hat{x}_i / \\partial x_j$",
+            "math": "$$\\frac{\\partial \\hat{x}_i}{\\partial x_j} = \\frac{1}{\\sigma}\\left[\\delta_{ij} - \\frac{1}{d} - \\frac{\\hat{x}_i \\hat{x}_j}{d}\\right]$$"
+          },
+          {
+            "name": "Matrix form",
+            "math": "$$J_{\\text{LN}} = \\frac{1}{\\sigma}\\left[I - \\frac{1}{d}\\mathbf{1}\\mathbf{1}^\\top - \\frac{1}{d}\\hat{x}\\hat{x}^\\top\\right]$$"
+          },
+          {
+            "name": "Interpretation",
+            "math": "$J_{\\text{LN}} \\approx \\frac{1}{\\sigma} I$ for large $d$ (rank-1 terms become small relative to $I$). Gradient directions approximately preserved, magnitudes rescaled by $1/\\sigma$."
+          }
+        ],
+        "consequence": "LN preserves gradient directions while rescaling magnitudes. Healthy gradient flow as long as $\\sigma$ doesn't become very small."
+      },
+      {
+        "title": "Why $\\gamma/\\beta$ are not redundant — formal argument",
+        "steps": [
+          {
+            "name": "At block 1",
+            "math": "Input $= X_0 = W_{\\text{embed}}[\\text{tokens}] + \\text{PE}$. LN could be absorbed into $W_{\\text{embed}}$. So at block 1, $\\gamma/\\beta$ ARE nearly redundant."
+          },
+          {
+            "name": "At block $k > 1$",
+            "math": "Input $= X_0 + \\sum_{i=1}^{k-1}(\\Delta_{\\text{attn}_i} + \\Delta_{\\text{FFN}_i})$. Sum of $2(k-1)+1$ terms from different weight matrices. No single matrix controls the statistics."
+          },
+          {
+            "name": "What $\\gamma/\\beta$ learn per block",
+            "math": "$\\gamma_k$: relative importance of dimension $j$ at depth $k$. $\\beta_k$: optimal bias at depth $k$. Block-specific because residual stream statistics evolve."
+          }
+        ],
+        "consequence": "Redundancy decreases with depth. $\\gamma/\\beta$ most useful in deeper blocks where accumulated residual stream is furthest from any single parameter's control."
+      },
+      {
+        "title": "Pre-LN vs Post-LN gradient flow",
+        "steps": [
+          {
+            "name": "Post-LN (original)",
+            "math": "$X_{\\text{out}} = \\text{LN}(X + \\text{SubLayer}(X))$. Gradient passes through $J_{\\text{LN}}$, which can distort the identity shortcut."
+          },
+          {
+            "name": "Pre-LN (modern)",
+            "math": "$X_{\\text{out}} = X + \\text{SubLayer}(\\text{LN}(X))$. Identity $I$ is OUTSIDE $J_{\\text{LN}}$ — gradient always has clean path."
+          }
+        ],
+        "consequence": "Pre-LN preserves the residual gradient highway. Post-LN can distort it. Pre-LN trains more stably in deep networks."
+      }
+    ]
+  },
+
+  "geometric_properties": [
+    "LN projects onto hyperplane (subtract mean) and normalizes length (divide by std)",
+    "Post-norm vectors lie near a $(d_{\\text{model}}-1)$-dimensional sphere",
+    "Monitor $\\|\\text{residual}\\| / \\|\\text{normalized}\\|$ — residual can undo normalization"
+  ],
+  "statistical_properties": [
+    "After LN: mean $\\approx \\beta$, std $\\approx |\\gamma|$ per dimension",
+    "Monitor learned $\\gamma$: collapse toward 0 = layer suppressed",
+    "Monitor pre-norm mean/variance across layers: should be stable"
+  ],
+  "numerical_properties": [
+    "$\\epsilon = 10^{-5}$ prevents division by zero. float16: use $\\epsilon = 10^{-3}$ or compute LN in float32",
+    "NaN/Inf post-norm almost always = LN numerical issue in mixed precision"
+  ],
+
+  "connections": {
+    "prerequisites": ["Basic statistics (mean, variance)", "Matrix calculus (Jacobians)"],
+    "enables": ["TRANSFORMER.ENCODER_DECODER"],
+    "related": ["TRANSFORMER.RESIDUALS — LN stabilizes what residuals accumulate", "Batch normalization — normalizes across batch dimension instead"]
+  },
+
+  "discussion_history": [
+    "Clarified $\\gamma/\\beta$ per-dimension not per-token",
+    "Explored non-redundancy via residual stream argument"
+  ],
+
+  "artifacts": [{"ref": "artifacts/docs/transformer_calculations.docx", "section": "Steps 4, 9"}],
+  "notes": []
+}
