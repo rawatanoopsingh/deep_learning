@@ -5,23 +5,23 @@
   "parent": "TRANSFORMER",
   "status": "covered",
   "date_created": "2026-03-15",
-  "date_updated": "2026-03-15",
+  "date_updated": "2026-03-17",
 
   "summary": "Encoder-decoder trains end-to-end with teacher forcing. Cross-entropy loss. AdamW with warmup. Warmup prevents early collapse when attention is random.",
 
   "key_insights": [
     "Teacher forcing: decoder input = target shifted right, all positions in ONE forward pass",
-    "Loss = average cross-entropy across target positions",
+    "Loss $= -\\frac{1}{T}\\sum_{t=1}^{T} \\log P(y_t | y_{<t}, X_{\\text{src}})$",
     "Gradients flow backward through entire architecture: decoder → cross-attention → encoder",
     "Exposure bias: training sees correct tokens, inference sees own predictions",
-    "Warmup critical: random attention + SGD noise = destabilizing at initialization",
-    "Original: linear warmup + 1/√t decay. Modern: linear warmup + cosine decay"
+    "Warmup critical: random attention + noisy gradients = destabilizing at initialization",
+    "AdamW stores $m$ and $v$ per parameter → $3\\times$ model memory for optimizer state"
   ],
 
   "mathematical_core": {
-    "loss": "L = -(1/T) Σ_{t=1..T} log P(y_t | y_{<t}, X_src)",
-    "adamw": "θ_t = θ_{t-1} - η(m̂_t / (√v̂_t + ε) + λθ_{t-1})",
-    "warmup": "LR(t) = d_model^{-0.5} · min(t^{-0.5}, t · warmup^{-1.5})"
+    "loss": "$$L = -\\frac{1}{T}\\sum_{t=1}^{T} \\log P(y_t | y_{<t}, X_{\\text{src}})$$",
+    "adamw": "$$\\theta_t = \\theta_{t-1} - \\eta\\left(\\frac{\\hat{m}_t}{\\sqrt{\\hat{v}_t} + \\epsilon} + \\lambda\\theta_{t-1}\\right)$$",
+    "warmup": "$$\\text{LR}(t) = d_{\\text{model}}^{-0.5} \\cdot \\min(t^{-0.5}, \\; t \\cdot \\text{warmup}^{-1.5})$$"
   },
 
   "mathematical_depth": {
@@ -30,80 +30,69 @@
         "title": "AdamW decomposition — what each component does",
         "steps": [
           {
-            "name": "Momentum (m_t)",
-            "math": "m_t = β₁·m_{t-1} + (1-β₁)·g_t. Exponential moving average of gradients. Smooths noisy SGD updates. β₁=0.9 means ~10-step memory."
+            "name": "Momentum ($m_t$)",
+            "math": "$m_t = \\beta_1 m_{t-1} + (1-\\beta_1) g_t$. EMA of gradients. Smooths noisy updates. $\\beta_1 = 0.9$ means $\\approx 10$-step memory."
           },
           {
-            "name": "Adaptive learning rate (v_t)",
-            "math": "v_t = β₂·v_{t-1} + (1-β₂)·g_t². EMA of squared gradients. Parameters with consistently large gradients get smaller effective LR. β₂=0.999 means ~1000-step memory."
+            "name": "Adaptive learning rate ($v_t$)",
+            "math": "$v_t = \\beta_2 v_{t-1} + (1-\\beta_2) g_t^2$. EMA of squared gradients. Params with large gradients get smaller LR. $\\beta_2 = 0.999$ means $\\approx 1000$-step memory."
           },
           {
             "name": "Bias correction",
-            "math": "m̂_t = m_t/(1-β₁ᵗ), v̂_t = v_t/(1-β₂ᵗ). At t=1: m₁ = 0.1·g₁ without correction, but should be ≈g₁. Correction factor (1-β₁ᵗ) → 0.1 at t=1, compensating."
+            "math": "$\\hat{m}_t = m_t/(1-\\beta_1^t)$, $\\hat{v}_t = v_t/(1-\\beta_2^t)$. At $t=1$: $m_1 = 0.1 g_1$ without correction, but should be $\\approx g_1$."
           },
           {
             "name": "Decoupled weight decay",
-            "math": "AdamW: θ -= η·λ·θ (weight decay applied directly to params, NOT through gradient). Adam (original): λ·θ added to gradient before adaptive scaling — coupling with v_t distorts decay rate."
+            "math": "AdamW: $\\theta -= \\eta \\lambda \\theta$ applied directly. Original Adam: $\\lambda\\theta$ added to gradient before adaptive scaling — distorts decay rate."
           }
         ],
-        "consequence": "AdamW = momentum (smooth direction) + adaptive LR (per-parameter scale) + bias correction (early stability) + decoupled decay (proper regularization). This combination is why it works for transformers."
+        "consequence": "AdamW = momentum (smooth direction) + adaptive LR (per-param scale) + bias correction (early stability) + decoupled decay (proper regularization)."
       },
       {
-        "title": "Why warmup is necessary — interaction with Adam's moment estimates",
+        "title": "Why warmup is necessary",
         "steps": [
           {
-            "name": "At initialization (t=1)",
-            "math": "m₁ = 0.1·g₁ (after bias correction ≈ g₁). v₁ = 0.001·g₁² (after correction ≈ g₁²). Effective update ≈ η · g₁/|g₁| = η · sign(g₁). Direction OK but magnitude = η regardless of gradient scale."
+            "name": "At initialization ($t=1$)",
+            "math": "Effective update $\\approx \\eta \\cdot \\text{sign}(g_1)$. Direction OK but magnitude $= \\eta$ regardless of gradient scale."
           },
           {
             "name": "Problem with attention",
-            "math": "At init, attention weights are random (uniform-ish). Gradients are essentially noise. Large η × noisy direction = large random step. Can push model into bad region permanently."
+            "math": "At init, attention weights are random (uniform-ish). Gradients are noise. Large $\\eta \\times$ noisy direction = large random steps."
           },
           {
             "name": "Warmup solution",
-            "math": "Start with η ≈ 0, linearly increase to η_max over warmup_steps. During warmup: v_t accumulates gradient statistics → adaptive LR becomes reliable. Attention patterns begin to form → gradients become meaningful."
+            "math": "Start with $\\eta \\approx 0$, linearly increase to $\\eta_{\\max}$. During warmup: $v_t$ accumulates → adaptive LR becomes reliable. Attention patterns form → gradients become meaningful."
           }
         ],
-        "consequence": "Warmup gives Adam time to calibrate its per-parameter learning rates (v_t) before taking large steps. Without it, early updates are blind large steps with poorly calibrated magnitudes."
+        "consequence": "Warmup gives Adam time to calibrate per-parameter learning rates ($v_t$) before taking large steps."
       },
       {
         "title": "Teacher forcing — why parallel training works",
-        "math": "Target: [<s>, y₁, y₂, ..., y_T]. Decoder input: [<s>, y₁, ..., y_{T-1}]. Expected output: [y₁, y₂, ..., y_T]. Causal mask ensures position t sees only positions 1..t. Each position independently predicts next token. All T predictions computed in ONE pass. Loss averaged over all T.",
-        "consequence": "T× speedup over sequential generation. But creates exposure bias: model never sees its own (potentially wrong) predictions during training."
+        "math": "Target: $[\\text{<s>}, y_1, y_2, \\ldots, y_T]$. Decoder input: $[\\text{<s>}, y_1, \\ldots, y_{T-1}]$. Causal mask ensures position $t$ sees only $1..t$. All $T$ predictions in ONE pass. $T\\times$ speedup.",
+        "consequence": "Creates exposure bias: model never sees its own (potentially wrong) predictions during training."
       }
     ]
   },
 
-  "monitoring": [
-    "Per-position loss: first token hardest, should decrease with position",
-    "Gradient norms: encoder vs decoder — encoder grads vanishing = cross-attention not propagating back",
-    "Attention entropy over training: uniform (random init) → peaked (learned)",
-    "Validation vs training loss: divergence = overfitting"
-  ],
-
   "geometric_properties": [
-    "Loss landscape has many minima — warmup helps find flat ones (connects to SGD noise topic)",
-    "Monitor gradient direction consistency: cosine similarity between consecutive gradient steps"
+    "Loss landscape has many minima — warmup helps find flat ones",
+    "Monitor gradient direction consistency: cosine similarity between consecutive steps"
   ],
   "statistical_properties": [
-    "Adam's v_t estimates per-parameter gradient variance — monitor for stability",
-    "Learning rate effective value = η / (√v̂_t + ε) — varies per parameter"
+    "Adam's $v_t$ estimates per-parameter gradient variance",
+    "Effective learning rate $= \\eta / (\\sqrt{\\hat{v}_t} + \\epsilon)$ — varies per parameter"
   ],
   "numerical_properties": [
-    "AdamW stores m and v per parameter — 3× model memory",
+    "AdamW stores $m$ and $v$ per parameter — $3\\times$ model memory",
     "For 100M params: model=400MB, optimizer=800MB, total=1.2GB in float32",
-    "Mixed precision: model float16 (200MB), optimizer float32 (800MB)"
+    "Mixed precision: model fp16 (200MB), optimizer fp32 (800MB)"
   ],
 
   "connections": {
     "prerequisites": ["FOUNDATIONS.BATCHING_SGD", "TRANSFORMER.MASKING", "TRANSFORMER.ENCODER_DECODER"],
     "enables": ["PRODUCTION.PRUNING"],
-    "related": ["TRANSFORMER.LAYER_NORM — stabilizes training", "TRANSFORMER.RESIDUALS — gradient highway"]
+    "related": ["TRANSFORMER.LAYER_NORM", "TRANSFORMER.RESIDUALS"]
   },
-
-  "artifacts": [
-    {"ref": "artifacts/docs/transformer_calculations.docx", "section": "Step 14"},
-    {"ref": "artifacts/docs/encoder_decoder_structure.docx", "section": "Step 6"}
-  ],
+  "artifacts": [],
   "notes": []
 }

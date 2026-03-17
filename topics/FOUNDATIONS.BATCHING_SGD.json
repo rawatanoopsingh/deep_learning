@@ -5,7 +5,7 @@
   "parent": "FOUNDATIONS",
   "status": "synthesized",
   "date_created": "2026-03-15",
-  "date_updated": "2026-03-15",
+  "date_updated": "2026-03-17",
 
   "summary": "Three-layer model: parallelism is the engineering reason for batching, SGD is the statistical license, gradient noise is the optimization feature (regularization, escape bad minima, generalization).",
 
@@ -14,15 +14,15 @@
     "SGD = statistical reason batching is valid (unbiased gradient estimate)",
     "Gradient noise = optimization feature, not side effect — regularizer, prevents sharp minima",
     "Full-batch GD gets stuck in sharp valleys; SGD noise finds broad, stable basins",
-    "Very large batches hurt generalization — noise reduction removes regularization",
+    "Very large batches hurt generalization — noise reduction removes the regularizer",
     "Analogy: SGD = noisy compass in fog — less precise but avoids traps"
   ],
 
   "mathematical_core": {
-    "full_gradient": "∇L(θ) = (1/N) Σᵢ ∇ℓ(θ, xᵢ) — average over ALL N training examples",
-    "mini_batch_gradient": "g_B(θ) = (1/|B|) Σᵢ∈B ∇ℓ(θ, xᵢ) — average over batch B ⊂ {1..N}",
-    "unbiasedness": "E[g_B(θ)] = ∇L(θ) — mini-batch gradient is unbiased estimate of full gradient",
-    "variance": "Var(g_B) = Var(∇ℓ) / |B| — variance decreases with batch size"
+    "full_gradient": "$$\\nabla L(\\theta) = \\frac{1}{N}\\sum_{i=1}^{N} \\nabla \\ell(\\theta, x_i)$$",
+    "mini_batch_gradient": "$$g_B(\\theta) = \\frac{1}{|B|}\\sum_{i \\in B} \\nabla \\ell(\\theta, x_i), \\quad B \\subset \\{1..N\\}$$",
+    "unbiasedness": "$\\mathbb{E}[g_B(\\theta)] = \\nabla L(\\theta)$ — mini-batch gradient is unbiased estimate",
+    "variance": "$\\text{Var}(g_B) = \\sigma^2 / |B|$ — variance decreases with batch size"
   },
 
   "mathematical_depth": {
@@ -32,68 +32,66 @@
         "steps": [
           {
             "name": "Noise structure",
-            "math": "g_B = ∇L + ε, where ε is zero-mean noise with Var(ε) = σ²/|B|. σ² = variance of per-sample gradients."
+            "math": "$g_B = \\nabla L + \\epsilon$, where $\\epsilon$ is zero-mean with $\\text{Var}(\\epsilon) = \\sigma^2/|B|$."
           },
           {
             "name": "Effect on optimization",
-            "math": "Update: θ_{t+1} = θ_t - η(∇L + ε_t). This is equivalent to gradient descent on a SMOOTHED loss landscape: the noise averages over nearby loss values, making sharp minima less attractive."
+            "math": "Update: $\\theta_{t+1} = \\theta_t - \\eta(\\nabla L + \\epsilon_t)$. Equivalent to GD on a smoothed loss: noise averages over nearby values, making sharp minima less attractive."
           },
           {
             "name": "Sharp vs flat minima",
-            "math": "Sharp minimum: high curvature, loss increases rapidly when θ is perturbed. SGD noise perturbs θ every step → model escapes sharp minima. Flat minimum: low curvature, loss changes slowly under perturbation. SGD noise doesn't push model out → model stays."
+            "math": "Sharp: high curvature, loss increases rapidly under perturbation. SGD noise perturbs $\\theta$ → model escapes. Flat: low curvature, noise doesn't push model out → stable."
           },
           {
             "name": "Generalization connection",
-            "math": "Flat minima generalize better (small parameter perturbations ≈ distribution shift between train and test). Sharp minima overfit (sensitive to exact training data). SGD noise biases toward flat minima → better generalization."
+            "math": "Flat minima generalize better (robust to distribution shift $\\approx$ parameter perturbation). SGD biases toward flat → better generalization."
           }
         ],
-        "consequence": "SGD noise is a built-in regularizer that favors solutions that generalize. Removing it (large batch, low LR) often hurts test performance even if training loss is lower."
+        "consequence": "SGD noise is a built-in regularizer favoring solutions that generalize. Removing it (large batch, low LR) often hurts test performance."
       },
       {
         "title": "Batch size — learning rate scaling law",
         "steps": [
           {
             "name": "Linear scaling rule",
-            "math": "If you multiply batch size by k, multiply learning rate by k to maintain the same effective update magnitude. Gradient variance decreases by k, so larger LR compensates."
+            "math": "Multiply batch size by $k$ → multiply LR by $k$. Gradient variance $\\downarrow k$, larger LR compensates."
           },
           {
             "name": "Breakdown at large batch",
-            "math": "Linear scaling works up to a critical batch size B_crit. Beyond B_crit, increasing batch size gives diminishing returns — gradient noise is already negligible and adding more samples doesn't help."
+            "math": "Linear scaling works up to critical batch size $B_{\\text{crit}}$. Beyond it: diminishing returns."
           },
           {
             "name": "Critical batch size",
-            "math": "B_crit ≈ B_noise / ε², where B_noise is the 'gradient noise scale' and ε is the target gradient accuracy. Empirically: B_crit grows with model size."
+            "math": "$B_{\\text{crit}} \\approx B_{\\text{noise}} / \\epsilon^2$. Empirically: $B_{\\text{crit}}$ grows with model size."
           }
         ],
-        "consequence": "There's an optimal batch size for each model/dataset combination. Larger is not always better. This interacts with warmup (need longer warmup for larger batches)."
+        "consequence": "Optimal batch size exists for each model/dataset. Larger is not always better."
       }
     ]
   },
 
   "geometric_properties": [
     "Loss landscape has many local minima — SGD noise helps navigate between them",
-    "Flat minima have large 'basin of attraction' — SGD preferentially finds these",
-    "The noise scale η²σ²/|B| determines the 'temperature' of the exploration"
+    "Flat minima have large basin of attraction — SGD preferentially finds these",
+    "Noise scale $\\eta^2 \\sigma^2 / |B|$ determines the 'temperature' of exploration"
   ],
   "statistical_properties": [
-    "Gradient variance Var(g_B) = σ²/|B| — monitor this to choose batch size",
-    "Signal-to-noise ratio: ||∇L|| / √Var(g_B) — should be > 1 for meaningful updates",
-    "If SNR >> 1: batch is too large (wasting compute). If SNR << 1: batch too small (updates are noise)"
+    "Gradient variance $\\text{Var}(g_B) = \\sigma^2 / |B|$ — monitor to choose batch size",
+    "Signal-to-noise ratio: $\\|\\nabla L\\| / \\sqrt{\\text{Var}(g_B)}$ — should be $> 1$ for meaningful updates",
+    "SNR $\\gg 1$: batch too large. SNR $\\ll 1$: batch too small"
   ],
   "numerical_properties": [
-    "Batch size must fit in GPU memory: B × n × d × 4 bytes per sample (plus activations)",
-    "Gradient accumulation: simulate large batch by accumulating gradients over multiple forward passes",
-    "Mixed precision: float16 forward/backward, float32 accumulation reduces memory per sample"
+    "Batch size must fit in GPU memory: $B \\times n \\times d \\times 4$ bytes (plus activations)",
+    "Gradient accumulation: simulate large batch by summing gradients over multiple forward passes",
+    "Mixed precision: fp16 forward/backward, fp32 accumulation reduces memory per sample"
   ],
 
   "connections": {
-    "prerequisites": ["Gradient descent concept", "Loss functions"],
-    "enables": ["TRANSFORMER.TRAINING — warmup interacts with SGD noise at initialization"],
-    "related": ["TRANSFORMER.LAYER_NORM — keeps activations where SGD noise is productive", "Learning rate scheduling", "Regularization"]
+    "prerequisites": ["FOUNDATIONS.GRADIENT_DESCENT", "FOUNDATIONS.LOSS_FUNCTIONS"],
+    "enables": ["TRANSFORMER.TRAINING"],
+    "related": ["TRANSFORMER.LAYER_NORM", "FOUNDATIONS.REGULARIZATION"]
   },
-
-  "application_relevance": "When training custom architectures, batch size is a design decision: too large loses regularization, too small wastes compute. The sweet spot depends on model size and data.",
-
+  "application_relevance": "Batch size is a design decision: too large loses regularization, too small wastes compute.",
   "artifacts": [],
   "notes": []
 }

@@ -98,6 +98,7 @@
     },
     "CNN": {
       "diagrams": [
+        {"file": "artifacts/diagrams/cnn_block_detail.svg", "description": "Conv block detail — im2col, variance, FIR", "level": 1},
         {"file": "artifacts/diagrams/cnn_architecture_clickable.svg", "description": "CNN Architecture — clickable blocks", "level": 0}
       ]
     }
@@ -110,6 +111,7 @@
       {"file": "artifacts/diagrams/transformer_N2_fully_expanded.svg", "topic": "TRANSFORMER.ENCODER_DECODER", "description": "N=2 fully unrolled"},
       {"file": "artifacts/diagrams/encoder_block_level1_detail.svg", "topic": "TRANSFORMER.ENCODER_DECODER", "description": "Encoder block detail SVG"},
       {"file": "artifacts/diagrams/decoder_block_level2_detail.svg", "topic": "TRANSFORMER.ENCODER_DECODER", "description": "Decoder block detail SVG"},
+      {"file": "artifacts/diagrams/cnn_block_detail.svg", "topic": "CNN.CONVOLUTION", "description": "Conv block detail — im2col, variance, FIR"},
       {"file": "artifacts/diagrams/cnn_architecture_clickable.svg", "topic": "CNN.CONVOLUTION", "description": "CNN Architecture — clickable"}
     ],
     "docs": [

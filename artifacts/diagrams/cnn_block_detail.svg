@@ -1,0 +1,125 @@
+<svg width="100%" viewBox="0 0 680 920" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+</defs>
+
+<text x="340" y="20" text-anchor="middle" style="fill:rgb(250,249,245);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:14px;font-weight:500">CNN Conv Block Detail — im2col, variance, FIR interpretation</text>
+<text x="340" y="38" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:12px;font-weight:400;text-anchor:middle">Superscript i = block number. Each block has separate weights Wⁱ.</text>
+
+<!-- ===== INPUT ===== -->
+<text x="58" y="72" text-anchor="end" style="font-size:11px;fill:rgb(250,249,245);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-weight:500">Fᵢ₋₁</text>
+<text x="58" y="86" text-anchor="end" style="font-size:10px;fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif">[B, Cᵢ₋₁, H, W]</text>
+<line x1="64" y1="78" x2="96" y2="78" marker-end="url(#arrow)" style="stroke:rgb(156,154,146);stroke-width:1.5px"/>
+
+<!-- CONV2D BLOCK -->
+<g>
+<rect x="98" y="58" width="200" height="50" rx="6" style="fill:rgb(68,68,65);stroke:rgb(151,196,89);stroke-width:0.8px"/>
+<text x="198" y="78" text-anchor="middle" style="fill:rgb(151,196,89);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:12px;font-weight:500">Conv2d (k×k, stride=1, pad=1)</text>
+<text x="198" y="98" text-anchor="middle" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:9px">Wⁱ ∈ [Cᵢ, Cᵢ₋₁, k, k]  bⁱ ∈ [Cᵢ]</text>
+</g>
+
+<!-- Annotations right side -->
+<text x="316" y="68" style="font-size:10px;fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif">Signal processing view:</text>
+<text x="316" y="82" style="font-size:10px;fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif">Each kernel = learned FIR filter</text>
+<text x="316" y="96" style="font-size:10px;fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif">Cᵢ output channels = Cᵢ parallel filters</text>
+
+<!-- Arrow down to im2col detail -->
+<line x1="198" y1="108" x2="198" y2="134" marker-end="url(#arrow)" style="stroke:rgb(156,154,146);stroke-width:1.5px"/>
+
+<!-- ===== IM2COL DETAIL ===== -->
+<rect x="48" y="134" width="580" height="170" rx="8" style="fill:rgba(151,196,89,0.06);stroke:rgba(151,196,89,0.3);stroke-width:0.8px"/>
+<text x="338" y="154" text-anchor="middle" style="fill:rgb(250,249,245);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:11px;font-weight:500">What Conv2d actually computes (im2col / Toeplitz)</text>
+
+<!-- Step 1: Extract patches -->
+<rect x="68" y="166" width="170" height="40" rx="5" style="fill:rgb(68,68,65);stroke:rgb(151,196,89);stroke-width:0.5px"/>
+<text x="153" y="183" text-anchor="middle" style="fill:rgb(151,196,89);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px;font-weight:500">1. Extract k×k patches</text>
+<text x="153" y="198" text-anchor="middle" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:9px">X_patches ∈ [k²·Cᵢ₋₁, N]</text>
+
+<line x1="238" y1="186" x2="268" y2="186" marker-end="url(#arrow)" style="stroke:rgb(156,154,146);stroke-width:1.5px"/>
+
+<!-- Step 2: Matrix multiply -->
+<rect x="270" y="166" width="170" height="40" rx="5" style="fill:rgb(68,68,65);stroke:rgb(151,196,89);stroke-width:0.5px"/>
+<text x="355" y="183" text-anchor="middle" style="fill:rgb(151,196,89);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px;font-weight:500">2. Y = W · X_patches</text>
+<text x="355" y="198" text-anchor="middle" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:9px">W ∈ [Cᵢ, k²·Cᵢ₋₁]</text>
+
+<line x1="440" y1="186" x2="470" y2="186" marker-end="url(#arrow)" style="stroke:rgb(156,154,146);stroke-width:1.5px"/>
+
+<!-- Step 3: Reshape -->
+<rect x="472" y="166" width="140" height="40" rx="5" style="fill:rgb(68,68,65);stroke:rgb(151,196,89);stroke-width:0.5px"/>
+<text x="542" y="183" text-anchor="middle" style="fill:rgb(151,196,89);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px;font-weight:500">3. Reshape to grid</text>
+<text x="542" y="198" text-anchor="middle" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:9px">Y ∈ [B, Cᵢ, H, W]</text>
+
+<!-- Key insight -->
+<text x="68" y="228" style="fill:rgb(250,249,245);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px;font-weight:500">Key: Conv = constrained matrix multiply (Toeplitz structure)</text>
+<text x="68" y="244" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">FC equivalent: k²·Cᵢ₋₁·H·W → Cᵢ·H·W params. Conv: k²·Cᵢ₋₁·Cᵢ params. Savings: H·W × (~5.5M× for ImageNet)</text>
+<text x="68" y="260" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">Weight sharing: same W at every spatial position → cache-friendly, parameter-efficient</text>
+<text x="68" y="276" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">Each output channel Cᵢ detects a different spatial pattern (edge, texture, object part)</text>
+<text x="68" y="292" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">FLOPs per layer: k²·Cᵢ₋₁·Cᵢ·H_out·W_out (not small — parameter-efficient ≠ FLOP-efficient)</text>
+
+<!-- Arrow to BatchNorm -->
+<line x1="198" y1="304" x2="198" y2="328" marker-end="url(#arrow)" style="stroke:rgb(156,154,146);stroke-width:1.5px"/>
+<text x="218" y="322" style="font-size:9px;fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif">[B, Cᵢ, H, W]</text>
+
+<!-- ===== BATCHNORM ===== -->
+<rect x="98" y="328" width="200" height="44" rx="6" style="fill:rgb(68,68,65);stroke:rgb(180,178,169);stroke-width:0.5px"/>
+<text x="198" y="348" text-anchor="middle" style="fill:rgb(180,178,169);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:12px">BatchNorm</text>
+<text x="198" y="365" text-anchor="middle" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:9px">γⁱ ⊙ (x − μ_B) / √(σ²_B + ε) + βⁱ</text>
+
+<text x="316" y="342" style="font-size:10px;fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif">Variance control (like LN in transformers)</text>
+<text x="316" y="356" style="font-size:10px;fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif">Normalize per channel across batch + spatial</text>
+<text x="316" y="370" style="font-size:10px;fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif">γⁱ, βⁱ ∈ [Cᵢ] — per-channel, learned</text>
+
+<line x1="198" y1="372" x2="198" y2="398" marker-end="url(#arrow)" style="stroke:rgb(156,154,146);stroke-width:1.5px"/>
+
+<!-- ===== RELU ===== -->
+<rect x="118" y="398" width="160" height="40" rx="6" style="fill:rgb(68,68,65);stroke:rgb(175,169,236);stroke-width:0.5px"/>
+<text x="198" y="418" text-anchor="middle" style="fill:rgb(175,169,236);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:12px">ReLU</text>
+<text x="198" y="432" text-anchor="middle" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:9px">max(0, x) — pointwise, no params</text>
+
+<!-- ReLU detail box -->
+<rect x="316" y="394" width="310" height="80" rx="6" style="fill:rgba(175,169,236,0.06);stroke:rgba(175,169,236,0.3);stroke-width:0.5px"/>
+<text x="330" y="412" style="fill:rgb(250,249,245);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px;font-weight:500">Why nonlinearity is critical here:</text>
+<text x="330" y="428" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">Without ReLU: Conv₂(Conv₁(x)) = W₂W₁x = W_combined · x</text>
+<text x="330" y="444" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">N conv layers collapse to 1 conv layer (larger kernel)</text>
+<text x="330" y="460" style="fill:rgb(175,169,236);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px;font-weight:500">With ReLU: up to 2^(L·d) piecewise-linear regions</text>
+
+<line x1="198" y1="438" x2="198" y2="464" marker-end="url(#arrow)" style="stroke:rgb(156,154,146);stroke-width:1.5px"/>
+
+<!-- ===== MAXPOOL ===== -->
+<rect x="118" y="464" width="160" height="40" rx="6" style="fill:rgb(68,68,65);stroke:rgb(239,159,39);stroke-width:0.5px"/>
+<text x="198" y="484" text-anchor="middle" style="fill:rgb(239,159,39);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:12px">MaxPool 2×2</text>
+<text x="198" y="498" text-anchor="middle" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:9px">stride=2 → H/2, W/2</text>
+
+<text x="316" y="480" style="font-size:10px;fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif">Spatial decimation (÷2 in each dim)</text>
+<text x="316" y="494" style="font-size:10px;fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif">Takes max of each 2×2 region → translation invariance</text>
+<text x="316" y="508" style="font-size:10px;fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif">Alternative: strided conv (learnable downsampling)</text>
+
+<!-- OUTPUT -->
+<line x1="198" y1="504" x2="198" y2="534" marker-end="url(#arrow)" style="stroke:rgb(156,154,146);stroke-width:1.5px"/>
+<text x="198" y="548" text-anchor="middle" style="font-size:11px;fill:rgb(250,249,245);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-weight:500">Output: Fᵢ [B, Cᵢ, H/2, W/2] → next block input</text>
+
+<!-- ===== VARIANCE EVOLUTION SECTION ===== -->
+<line x1="48" y1="574" x2="632" y2="574" style="stroke:rgba(222,220,209,0.3);stroke-width:0.5px"/>
+<text x="340" y="596" text-anchor="middle" style="fill:rgb(250,249,245);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:12px;font-weight:500">Variance evolution through conv layers</text>
+
+<text x="68" y="620" style="fill:rgb(151,196,89);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px;font-weight:500">Forward pass variance:</text>
+<text x="68" y="638" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">Var(output) = k² · Cᵢ₋₁ · Var(w) · Var(input)   — if w, input are i.i.d. zero-mean</text>
+<text x="68" y="656" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">Want Var(output) = Var(input) → Var(w) = 1/(k² · Cᵢ₋₁)   — this is Xavier initialization</text>
+<text x="68" y="674" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">With ReLU: half the neurons are zero → Var(w) = 2/(k² · Cᵢ₋₁)   — Kaiming initialization</text>
+
+<text x="68" y="700" style="fill:rgb(175,169,236);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px;font-weight:500">Same philosophy as 1/√dₖ in attention:</text>
+<text x="68" y="718" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">Attention: Var(score) = dₖ → scale by 1/√dₖ to normalize to Var=1</text>
+<text x="68" y="736" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">Conv: Var(output) = k²Cᵢ₋₁ · Var(w) · Var(input) → init w with Var = 1/(k²Cᵢ₋₁) to normalize</text>
+<text x="68" y="754" style="fill:rgb(250,249,245);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px;font-weight:500">Both are variance-control mechanisms keeping signals in a healthy range through depth.</text>
+
+<!-- ===== BASIS FUNCTIONS SECTION ===== -->
+<line x1="48" y1="774" x2="632" y2="774" style="stroke:rgba(222,220,209,0.3);stroke-width:0.5px"/>
+<text x="340" y="796" text-anchor="middle" style="fill:rgb(250,249,245);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:12px;font-weight:500">Kernel as basis functions (advanced)</text>
+
+<text x="68" y="818" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">Instead of learning all k² weights freely, constrain kernel to a parametric family:</text>
+<text x="68" y="838" style="fill:rgb(151,196,89);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">h(x,y) = Σ αᵢ φᵢ(x,y)   where φ = basis functions (Gabor, wavelet, Chebyshev, Fourier)</text>
+<text x="68" y="858" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">Gabor: 5 params per kernel vs k²=9. Encodes orientation + frequency. Matches V1 cortex.</text>
+<text x="68" y="878" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">Hybrid: fix some kernels to known basis, learn others freely. Domain knowledge as architectural prior.</text>
+<text x="68" y="898" style="fill:rgb(194,192,182);font-family:'Anthropic Sans',-apple-system,system-ui,sans-serif;font-size:10px">This is a powerful design tool: encode domain knowledge into the kernel parameterization itself.</text>
+
+</svg>

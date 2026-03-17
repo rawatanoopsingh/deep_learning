@@ -5,25 +5,25 @@
   "parent": "TRANSFORMER",
   "status": "strong_intuition",
   "date_created": "2026-03-15",
-  "date_updated": "2026-03-15",
+  "date_updated": "2026-03-17",
 
-  "summary": "Q from one source, K/V from another. Enables connecting different data types/modalities. Score matrix is rectangular [n_tgt × n_src]. K and V always come from the same source. No mask applied.",
+  "summary": "Q from one source, K/V from another. Enables connecting different data types/modalities. Score matrix is rectangular $[n_{\\text{tgt}} \\times n_{\\text{src}}]$. K and V always come from the same source. No mask applied.",
 
   "key_insights": [
     "Self-attention: Q=K=V source. Cross-attention: Q from one source, K/V from another",
     "K and V always from SAME source (keys advertise, values deliver)",
-    "Score matrix RECTANGULAR [n_tgt × n_src] — not square",
+    "Score matrix RECTANGULAR $[n_{\\text{tgt}} \\times n_{\\text{src}}]$ — not square",
     "Q source = 'questioner', K/V source = 'knowledge base'",
-    "Swapping Q and K/V sources is NOT symmetric",
+    "Swapping Q and K/V sources is NOT symmetric — output shape follows Q source",
     "Pattern applies beyond language: RAG, knowledge graphs, sensor analysis"
   ],
 
   "mathematical_core": {
-    "formula": "CrossAttention(Q_dec, K_enc, V_enc) = softmax(Q_dec · K_encᵀ / √d_k) · V_enc",
-    "Q_source": "[B, n_tgt, d] from decoder/query side",
-    "KV_source": "[B, n_src, d] from encoder/knowledge side",
-    "score_matrix": "[B, h, n_tgt, n_src] — rectangular",
-    "output": "[B, n_tgt, d] — target's sequence length, not source's"
+    "formula": "$$\\text{CrossAttn}(Q_{\\text{dec}}, K_{\\text{enc}}, V_{\\text{enc}}) = \\text{softmax}\\left(\\frac{Q_{\\text{dec}} K_{\\text{enc}}^\\top}{\\sqrt{d_k}}\\right) V_{\\text{enc}}$$",
+    "Q_source": "$Q \\in [B, n_{\\text{tgt}}, d]$ from decoder/query side",
+    "KV_source": "$K, V \\in [B, n_{\\text{src}}, d]$ from encoder/knowledge side",
+    "score_matrix": "$S \\in [B, h, n_{\\text{tgt}}, n_{\\text{src}}]$ — rectangular",
+    "output": "Output $\\in [B, n_{\\text{tgt}}, d]$ — inherits Q source's sequence length"
   },
 
   "mathematical_depth": {
@@ -33,41 +33,41 @@
         "steps": [
           {
             "name": "Configuration A: Q=decoder, K/V=encoder",
-            "math": "Score S[i,j] = Q_dec[i] · K_enc[j]ᵀ / √d_k. Output[i] = Σⱼ softmax(S[i,:])_j · V_enc[j]. Each decoder position retrieves a weighted blend of encoder content."
+            "math": "$S[i,j] = Q_{\\text{dec}}[i] \\cdot K_{\\text{enc}}[j]^\\top / \\sqrt{d_k}$. Output $[i] = \\sum_j \\text{softmax}(S[i,:])_j \\cdot V_{\\text{enc}}[j]$. Each decoder position retrieves a weighted blend of encoder content."
           },
           {
             "name": "Configuration B: Q=encoder, K/V=decoder (swapped)",
-            "math": "Score S[i,j] = Q_enc[i] · K_dec[j]ᵀ / √d_k. Output[i] = Σⱼ softmax(S[i,:])_j · V_dec[j]. Each encoder position retrieves a weighted blend of decoder content."
+            "math": "$S[i,j] = Q_{\\text{enc}}[i] \\cdot K_{\\text{dec}}[j]^\\top / \\sqrt{d_k}$. Output $[i] = \\sum_j \\text{softmax}(S[i,:])_j \\cdot V_{\\text{dec}}[j]$. Each encoder position retrieves decoder content."
           },
           {
             "name": "Key difference",
-            "math": "Config A output shape: [B, n_tgt, d] — one vector per decoder position. Config B output shape: [B, n_src, d] — one vector per encoder position. The OUTPUT inherits the Q source's sequence length."
+            "math": "Config A output: $[B, n_{\\text{tgt}}, d]$. Config B output: $[B, n_{\\text{src}}, d]$. The OUTPUT inherits the Q source's sequence length."
           }
         ],
-        "consequence": "The Q source determines 'who is asking questions' and gets the output. The K/V source determines 'what knowledge is available'. In encoder-decoder: the decoder asks, the encoder provides. Swapping would mean the encoder is querying the decoder — semantically different."
+        "consequence": "The Q source determines 'who is asking questions' and gets the output. The K/V source determines 'what knowledge is available'. In encoder-decoder: decoder asks, encoder provides."
       },
       {
         "title": "Rectangular attention matrix properties",
         "steps": [
           {
             "name": "Shape",
-            "math": "A ∈ [n_tgt, n_src]. Each row sums to 1 (softmax over source positions). But columns do NOT sum to 1."
+            "math": "$A \\in \\mathbb{R}^{n_{\\text{tgt}} \\times n_{\\text{src}}}$. Each row sums to 1 (softmax over source). Columns do NOT sum to 1."
           },
           {
             "name": "Column interpretation",
-            "math": "Column j of A tells you how much each target position attends to source position j. If column j sums to a large value, source position j is heavily attended (high 'coverage'). If column j sums near 0, source position j is ignored."
+            "math": "Column $j$: how much each target attends to source position $j$. Coverage $= \\sum_i A[i,j]$. High coverage = heavily attended. Near zero = ignored."
           },
           {
             "name": "Coverage diagnostic",
-            "math": "Source coverage = Σᵢ A[i,j] for each source position j. In translation: every source word should be 'covered' (attended to by at least one target word). Low coverage = missed source content."
+            "math": "In translation: every source word should be covered. Low coverage on position $j$ = model is missing that input."
           }
         ],
-        "consequence": "Coverage analysis is a diagnostic tool: if the cross-attention consistently ignores certain encoder positions, the model is missing input information. This was a known issue in early seq2seq models, partly solved by coverage mechanisms."
+        "consequence": "Coverage analysis is a diagnostic tool for cross-attention quality. Missing coverage was a known issue in early seq2seq, partly solved by explicit coverage mechanisms."
       },
       {
         "title": "Computational complexity comparison",
-        "math": "Self-attention: O(n² · d_k) — quadratic in ONE sequence length. Cross-attention: O(n_tgt · n_src · d_k) — product of TWO lengths. If n_tgt << n_src (short query, long knowledge base): dominated by n_src. If n_tgt ≈ n_src: similar to self-attention.",
-        "consequence": "For applications with long knowledge bases (large n_src) and short queries (small n_tgt), cross-attention is dominated by the source length. This is why efficient retrieval (reducing n_src before cross-attention) matters."
+        "math": "Self-attention: $O(n^2 d_k)$ — quadratic in one sequence. Cross-attention: $O(n_{\\text{tgt}} \\cdot n_{\\text{src}} \\cdot d_k)$ — product of two lengths. If $n_{\\text{tgt}} \\ll n_{\\text{src}}$: dominated by $n_{\\text{src}}$.",
+        "consequence": "For long knowledge bases with short queries, cross-attention cost is dominated by source length. This is why efficient retrieval (reducing $n_{\\text{src}}$ before cross-attention) matters for RAG."
       }
     ]
   },
@@ -75,22 +75,22 @@
   "geometric_properties": [
     "Cross-attention creates an alignment manifold between two representation spaces",
     "For translation: expect roughly diagonal pattern (with deviations for word-order changes)",
-    "Monitor: does decoder attend to few encoder positions (focused retrieval) or broadly (aggregation)?"
+    "Monitor: focused retrieval (peaked attention) vs broad aggregation (diffuse attention)"
   ],
   "statistical_properties": [
-    "Source coverage: Σᵢ A[i,j] per source position — should be non-zero for all informative positions",
+    "Source coverage: $\\sum_i A[i,j]$ per source position — should be non-zero for all informative positions",
     "Attention diversity across heads: different heads should align different aspects",
     "Cross-attention entropy: peaked = retrieval task, broad = aggregation task"
   ],
   "numerical_properties": [
-    "O(n_tgt · n_src · d_k) per head — not O(n²) unless sequences are equal length",
-    "Memory for attention weights: B × h × n_tgt × n_src",
-    "If n_src >> n_tgt: memory dominated by source length"
+    "$O(n_{\\text{tgt}} \\cdot n_{\\text{src}} \\cdot d_k)$ per head",
+    "Memory for attention weights: $B \\times h \\times n_{\\text{tgt}} \\times n_{\\text{src}}$",
+    "If $n_{\\text{src}} \\gg n_{\\text{tgt}}$: memory dominated by source length"
   ],
 
   "connections": {
     "prerequisites": ["TRANSFORMER.SELF_ATTENTION"],
-    "enables": ["TRANSFORMER.ENCODER_DECODER — cross-attention is the bridge"],
+    "enables": ["TRANSFORMER.ENCODER_DECODER", "MULTIMODAL.FUSION"],
     "related": ["RAG architectures", "Knowledge graph integration"]
   },
 
@@ -101,8 +101,7 @@
   ],
 
   "artifacts": [
-    {"ref": "artifacts/docs/encoder_decoder_structure.docx", "section": "Step 4"},
-    {"ref": "artifacts/diagrams/page3_decoder_block_detail.png"}
+    {"ref": "artifacts/diagrams/decoder_block_level2_detail.svg", "section": "Cross-attention sub-layer"}
   ],
   "notes": [
     "Strong intuition developed through application reasoning rather than formal study"

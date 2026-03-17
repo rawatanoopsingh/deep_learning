@@ -5,22 +5,22 @@
   "parent": "FOUNDATIONS",
   "status": "synthesized",
   "date_created": "2026-03-15",
-  "date_updated": "2026-03-15",
+  "date_updated": "2026-03-17",
 
-  "summary": "The architecture defines the functional form of q_θ, determining which parameters exist and how they interact. This structure constrains the space of possible solutions and provides the conceptual framework through which humans can understand what the model has learned.",
+  "summary": "The architecture defines the functional form of $q_\\theta$, determining which parameters exist and how they interact. This constrains the solution space and provides the framework through which humans understand what the model has learned.",
 
   "key_insights": [
-    "Supervised learning minimizes D_KL(p || q_θ) — the statistical objective doesn't care about architecture",
-    "Architecture defines which function family q_θ belongs to: Q_transformer, Q_CNN, Q_linear, etc.",
+    "Supervised learning minimizes $D_{KL}(p \\| q_\\theta)$ — the objective doesn't care about architecture",
+    "Architecture defines which function family $q_\\theta$ belongs to: $Q_{\\text{transformer}}, Q_{\\text{CNN}}, Q_{\\text{linear}}$",
     "Architecture makes the learned solution interpretable: embeddings → geometry, attention → patterns, MLP → detectors",
-    "Architecture = inductive bias = constraints that shape what kind of q_θ can be learned",
-    "Without architecture, q_θ = giant lookup table — uninterpretable. With architecture, q_θ = structured latent space"
+    "Architecture = inductive bias = constraints that shape what kind of $q_\\theta$ can be learned",
+    "Without architecture, $q_\\theta$ = giant lookup table — uninterpretable. With architecture = structured latent space"
   ],
 
   "mathematical_core": {
-    "objective": "θ* = argmin_θ D_KL(p || q_θ)",
-    "architecture_role": "Defines the set Q such that q_θ ∈ Q_architecture",
-    "function_families": "Q_transformer ⊂ Q_all, Q_CNN ⊂ Q_all, Q_linear ⊂ Q_all — each a different subset of all possible functions"
+    "objective": "$$\\theta^* = \\arg\\min_\\theta D_{KL}(p \\| q_\\theta)$$",
+    "architecture_role": "Defines the set $Q$ such that $q_\\theta \\in Q_{\\text{architecture}}$",
+    "function_families": "$Q_{\\text{transformer}} \\subset Q_{\\text{all}}, \\; Q_{\\text{CNN}} \\subset Q_{\\text{all}}, \\; Q_{\\text{linear}} \\subset Q_{\\text{all}}$"
   },
 
   "mathematical_depth": {
@@ -30,35 +30,33 @@
         "steps": [
           {
             "name": "Forward KL",
-            "math": "D_KL(p || q_θ) = Σ_x p(x) log(p(x)/q_θ(x)) = -H(p) - Σ_x p(x) log q_θ(x)"
+            "math": "$$D_{KL}(p \\| q_\\theta) = \\sum_x p(x) \\log \\frac{p(x)}{q_\\theta(x)} = -H(p) - \\sum_x p(x) \\log q_\\theta(x)$$"
           },
           {
             "name": "Training equivalence",
-            "math": "Since H(p) is constant w.r.t. θ: argmin_θ D_KL(p || q_θ) = argmin_θ -Σ_x p(x) log q_θ(x) = argmin_θ cross-entropy loss"
+            "math": "Since $H(p)$ is constant w.r.t. $\\theta$: $\\arg\\min_\\theta D_{KL}(p \\| q_\\theta) = \\arg\\min_\\theta \\text{CE}(p, q_\\theta)$"
           },
           {
             "name": "Architecture independence",
-            "math": "This objective is valid for ANY q_θ — linear, CNN, transformer. The architecture only constrains WHICH q_θ functions are reachable, not the objective itself."
+            "math": "This objective is valid for ANY $q_\\theta$. The architecture only constrains WHICH $q_\\theta$ functions are reachable, not the objective."
           }
         ],
-        "consequence": "Cross-entropy loss IS KL minimization. The architecture determines the search space, the loss determines the direction."
+        "consequence": "Cross-entropy loss IS KL minimization. Architecture determines the search space, loss determines the direction."
       },
       {
         "title": "Inductive bias as function space restriction",
-        "math": "Universal approximation: a sufficiently large MLP can approximate any function. But transformers approximate SOME functions much more efficiently (fewer parameters, faster convergence) because their structure matches the data's structure. The 'bias' is toward functions that decompose into attention (relational) + FFN (transformational) + residual (refinement) patterns.",
-        "consequence": "Architecture choice = betting that your data has the structure your architecture is biased toward. Transformers bet on: sequential data with long-range dependencies and position-dependent relationships."
+        "math": "Universal approximation: a sufficiently large MLP can approximate any function. But transformers approximate SOME functions much more efficiently because their structure matches the data. The 'bias' is toward functions that decompose into attention (relational) + FFN (transformational) + residual (refinement) patterns.",
+        "consequence": "Architecture choice = betting that your data has the structure your architecture is biased toward."
       }
     ]
   },
 
   "connections": {
-    "prerequisites": ["KL divergence", "Loss functions", "Supervised learning"],
-    "enables": ["All architecture topics — explains WHY architecture matters"],
-    "related": ["FOUNDATIONS.BATCHING_SGD", "TRANSFORMER.SELF_ATTENTION", "TRANSFORMER.VARIANTS"]
+    "prerequisites": ["FOUNDATIONS.LOSS_FUNCTIONS"],
+    "enables": ["TRANSFORMER.SELF_ATTENTION", "CNN.CONVOLUTION"],
+    "related": ["FOUNDATIONS.BATCHING_SGD", "TRANSFORMER.VARIANTS", "CNN.VIT"]
   },
-
-  "application_relevance": "When adapting an architecture, you are choosing which aspects of the solution will be interpretable and which relationships the model can discover. This is the theoretical foundation for architectural innovation.",
-
+  "application_relevance": "When adapting an architecture, you are choosing which aspects of the solution will be interpretable. This is the theoretical foundation for architectural innovation.",
   "artifacts": [],
   "notes": []
 }
