@@ -3,22 +3,84 @@
   "topic_id": "FOUNDATIONS.REGULARIZATION",
   "title": "Regularization & Generalization",
   "parent": "FOUNDATIONS",
-  "status": "skeleton",
+  "status": "initial_intuition",
   "date_created": "2026-03-16",
-  "date_updated": "2026-03-16",
-  "summary": "Techniques to prevent overfitting and ensure the model generalizes beyond training data. Includes explicit methods (dropout, weight decay, L1/L2) and implicit (SGD noise, data augmentation, early stopping). Connects to pruning — regularization-driven sparsity is a production compression technique.",
-  "key_insights": [],
+  "date_updated": "2026-03-17",
+  "summary": "Techniques to prevent overfitting. Explicit (dropout, weight decay, L1/L2) and implicit (SGD noise, data augmentation, early stopping). The goal: model learns patterns, not noise. Connects to pruning — L1 regularization creates prunable weights.",
+
+  "key_insights": [
+    "Overfitting = model memorizes training data instead of learning patterns. Gap between train and val loss.",
+    "L1 drives weights to exactly zero (sparse). L2 drives weights to be small (not zero). L1 → natural pruning.",
+    "Dropout: randomly zero $p$ fraction of activations during training. Forces redundancy — no single neuron is critical.",
+    "Weight decay ≠ L2 regularization when using Adam. AdamW separates them: $\\theta_{t+1} = (1-\\lambda)\\theta_t - \\eta \\cdot m_t/\\sqrt{v_t}$.",
+    "SGD noise is FREE regularization — mini-batch gradients are noisy, preventing sharp minima. See BATCHING_SGD.",
+    "Early stopping: train until val loss stops improving. Simplest regularizer, often sufficient."
+  ],
+
   "mathematical_core": {
-    "l1": "L_total = L_task + λ Σ|θ_i| — drives weights to zero (sparsity)",
-    "l2": "L_total = L_task + λ Σθ_i² — drives weights to be small (not zero)",
-    "dropout": "During training: randomly zero p fraction of activations. During inference: scale by (1-p).",
-    "weight_decay": "θ_{t+1} = (1-λη)θ_t - η·∇L — shrinks weights each step"
+    "l1": "$$L_{\\text{total}} = L_{\\text{task}} + \\lambda \\sum_i |\\theta_i|$$ Gradient: $\\text{sign}(\\theta_i)$ — constant push toward zero.",
+    "l2": "$$L_{\\text{total}} = L_{\\text{task}} + \\lambda \\sum_i \\theta_i^2$$ Gradient: $2\\lambda\\theta_i$ — proportional push (larger weights shrink more).",
+    "dropout": "Training: $h' = h \\odot m$ where $m \\sim \\text{Bernoulli}(1-p)$. Inference: $h' = (1-p) \\cdot h$ (or inverted dropout: scale during training).",
+    "weight_decay": "$$\\theta_{t+1} = (1-\\lambda\\eta)\\theta_t - \\eta \\nabla L$$ Multiplicative shrinkage each step."
   },
-  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "L1 vs L2 — why L1 creates sparsity",
+        "steps": [
+          {
+            "name": "L2 gradient near zero",
+            "math": "$\\frac{\\partial}{\\partial \\theta}\\lambda\\theta^2 = 2\\lambda\\theta$. As $\\theta \\to 0$: gradient $\\to 0$. Shrinks slowly near zero, never reaches it."
+          },
+          {
+            "name": "L1 gradient near zero",
+            "math": "$\\frac{\\partial}{\\partial \\theta}\\lambda|\\theta| = \\lambda \\cdot \\text{sign}(\\theta)$. Constant push of $\\pm\\lambda$ regardless of magnitude. Crosses zero and stays."
+          },
+          {
+            "name": "Geometric view",
+            "math": "L1 constraint: diamond $\\sum|\\theta_i| \\leq c$. L2 constraint: sphere $\\sum\\theta_i^2 \\leq c$. Diamond has corners on axes — intersections with loss contours hit corners = sparse solutions."
+          }
+        ],
+        "consequence": "L1 produces sparse models naturally. L2 produces small-but-dense models. For pruning: train with L1, then remove zero weights."
+      },
+      {
+        "title": "Dropout as ensemble approximation",
+        "steps": [
+          {
+            "name": "Each forward pass = different sub-network",
+            "math": "With $n$ neurons and dropout $p$: $2^n$ possible sub-networks. Each training step trains a random one."
+          },
+          {
+            "name": "Inference = geometric average of all sub-networks",
+            "math": "Scaling by $(1-p)$ at inference approximates the geometric mean of all $2^n$ sub-network predictions."
+          }
+        ],
+        "consequence": "Dropout ≈ training an exponential ensemble. Each member sees different features → forces the network to learn redundant representations."
+      }
+    ]
+  },
+
+  "geometric_properties": [
+    "L1 constraint region = diamond (axis-aligned corners encourage sparsity)",
+    "L2 constraint region = sphere (rotationally symmetric, no axis preference)",
+    "Dropout creates a different loss surface each step — smooths the optimization landscape"
+  ],
+  "statistical_properties": [
+    "Train-val gap > 5-10% relative: likely overfitting. Add regularization or more data.",
+    "Dropout $p$: typical values 0.1 (transformers) to 0.5 (FC layers). Higher $p$ = stronger regularization.",
+    "Weight decay $\\lambda$: typical $10^{-2}$ to $10^{-4}$. Too high = underfitting."
+  ],
+  "numerical_properties": [
+    "Dropout is FREE at inference if using inverted dropout (scale during training).",
+    "L1 is not differentiable at $\\theta = 0$. Use subgradient: any value in $[-1, 1]$.",
+    "Weight decay on bias terms: generally not done (bias doesn't cause overfitting)."
+  ],
+
   "connections": {
     "prerequisites": ["FOUNDATIONS.GRADIENT_DESCENT", "FOUNDATIONS.LOSS_FUNCTIONS"],
-    "enables": ["PRODUCTION.PRUNING — L1 regularization creates prunable weights"],
-    "related": ["FOUNDATIONS.BATCHING_SGD — SGD noise is implicit regularization"]
+    "enables": ["PRODUCTION.PRUNING — L1 creates prunable weights"],
+    "related": ["FOUNDATIONS.BATCHING_SGD — SGD noise is implicit regularization", "TRANSFORMER.TRAINING — dropout in attention and FFN"]
   },
   "artifacts": [],
   "notes": []

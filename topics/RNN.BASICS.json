@@ -3,35 +3,57 @@
   "topic_id": "RNN.BASICS",
   "title": "RNNs, LSTMs & GRUs (Historical Context)",
   "parent": "RNN",
-  "status": "skeleton",
+  "status": "initial_intuition",
   "date_created": "2026-03-16",
-  "date_updated": "2026-03-16",
-  "summary": "Sequential models that process one token at a time, maintaining a hidden state. LSTMs/GRUs add gating to control information flow. Transformers replaced them because: (1) RNNs are inherently sequential (no parallelism), (2) long-range dependencies are hard despite gates, (3) attention provides direct access to any position. Understanding why they failed informs transformer design choices.",
+  "date_updated": "2026-03-17",
+  "summary": "Sequential processing: hidden state $h_t$ updated at each timestep. LSTMs and GRUs add gating to control information flow. Transformers replaced them because: sequential = slow (no parallelism), vanishing gradients over long sequences, and attention directly accesses any position.",
+
   "key_insights": [
-    "RNN: h_t = f(h_{t-1}, x_t) — hidden state carries all history. Sequential by construction.",
-    "Vanishing gradient: gradients through long chains of h_t multiplications shrink to zero",
-    "LSTM: adds cell state c_t with forget/input/output gates — controls what to remember/forget",
-    "GRU: simplified LSTM with 2 gates instead of 3 — similar performance, fewer parameters",
-    "Why transformers won: parallel training (no sequential dependency), direct long-range access (attention), scalability (more compute = better results)",
-    "RNNs still useful for: streaming/online processing, very long sequences where O(n^2) attention is prohibitive"
+    "RNN: $h_t = \\sigma(W_h h_{t-1} + W_x x_t + b)$. Hidden state carries information from all past inputs. Sequential — can't parallelize.",
+    "Vanishing gradients: $\\partial h_T / \\partial h_1 = \\prod_{t=1}^{T-1} W_h \\sigma'$. If $\\|W_h\\| < 1$: vanishes exponentially. Can't learn long-range dependencies.",
+    "LSTM: adds cell state $c_t$ (the 'memory highway') + forget/input/output gates (sigmoid → 0 or 1). Gates decide what to remember/forget.",
+    "GRU: simplified LSTM. Two gates instead of three (reset, update). Fewer params, similar performance.",
+    "Why transformers won: (1) Parallel — all positions computed simultaneously. (2) Direct access — attention connects any two positions in $O(1)$. (3) No information bottleneck — no fixed-size hidden state.",
+    "RNNs survive in niche: online/streaming processing where you can't wait for the full sequence, very long sequences where $O(n^2)$ attention is prohibitive."
   ],
+
   "mathematical_core": {
-    "rnn": "h_t = tanh(W_hh * h_{t-1} + W_xh * x_t + b)",
-    "lstm_forget": "f_t = sigma(W_f * [h_{t-1}, x_t] + b_f) — what to forget from cell state",
-    "lstm_input": "i_t = sigma(W_i * [h_{t-1}, x_t] + b_i) — what new info to store",
-    "lstm_cell": "c_t = f_t * c_{t-1} + i_t * tanh(W_c * [h_{t-1}, x_t] + b_c)",
-    "lstm_output": "h_t = o_t * tanh(c_t) — what to output from cell state"
+    "rnn": "$$h_t = \\tanh(W_h h_{t-1} + W_x x_t + b)$$",
+    "lstm_forget": "$f_t = \\sigma(W_f [h_{t-1}, x_t] + b_f)$ — what to forget from cell state",
+    "lstm_input": "$i_t = \\sigma(W_i [h_{t-1}, x_t] + b_i)$ — what new info to store",
+    "lstm_cell": "$c_t = f_t \\odot c_{t-1} + i_t \\odot \\tanh(W_c [h_{t-1}, x_t] + b_c)$",
+    "lstm_output": "$o_t = \\sigma(W_o [h_{t-1}, x_t] + b_o)$, $h_t = o_t \\odot \\tanh(c_t)$",
+    "gru": "$z_t = \\sigma(W_z [h_{t-1}, x_t])$, $r_t = \\sigma(W_r [h_{t-1}, x_t])$, $h_t = (1-z_t) \\odot h_{t-1} + z_t \\odot \\tanh(W [r_t \\odot h_{t-1}, x_t])$"
   },
-  "mathematical_depth": {"derivations": [], "status": "to be populated"},
-  "connections": {
-    "prerequisites": ["FOUNDATIONS.GRADIENT_DESCENT"],
-    "enables": ["Understanding why transformers were designed the way they are"],
-    "related": [
-      "TRANSFORMER.SELF_ATTENTION — attention solves the long-range dependency problem RNNs couldn't",
-      "TRANSFORMER.POSITIONAL_ENCODING — needed because transformers gave up sequential processing",
-      "TRANSFORMER.MASKING — simulates sequential processing in parallel"
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Why LSTM gates use sigmoid — connection to FOUNDATIONS.ACTIVATIONS",
+        "steps": [
+          {
+            "name": "Gate values must be in $[0, 1]$",
+            "math": "Forget gate $f_t$: 0 = forget completely, 1 = remember perfectly. Sigmoid outputs $\\in (0, 1)$ naturally."
+          },
+          {
+            "name": "Candidate values use tanh",
+            "math": "New cell content $\\tilde{c}_t = \\tanh(\\cdot)$ outputs $\\in (-1, 1)$. Centered at zero — balanced positive/negative updates."
+          },
+          {
+            "name": "Cell state as residual highway",
+            "math": "$c_t = f_t \\odot c_{t-1} + i_t \\odot \\tilde{c}_t$. When $f_t \\approx 1, i_t \\approx 0$: $c_t \\approx c_{t-1}$. Perfect gradient flow — same principle as transformer residuals."
+          }
+        ],
+        "consequence": "LSTM cell state = selective residual connection. Forget gate controls how much past to keep. This is the historical precursor to transformer skip connections."
+      }
     ]
   },
+
+  "connections": {
+    "prerequisites": ["FOUNDATIONS.ACTIVATIONS — sigmoid for gates", "FOUNDATIONS.GRADIENT_DESCENT — vanishing gradient problem"],
+    "enables": [],
+    "related": ["TRANSFORMER.SELF_ATTENTION — replaced RNNs by solving the same problems differently", "TRANSFORMER.RESIDUALS — cell state = early residual highway"]
+  },
   "artifacts": [],
-  "notes": ["Historical context — understand what problem transformers solved. Not a primary learning target for architecture innovation."]
+  "notes": ["Understanding RNN limitations is important context for WHY transformers were designed the way they are. The vanishing gradient → LSTM gate → residual connection → transformer evolution."]
 }

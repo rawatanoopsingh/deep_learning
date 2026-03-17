@@ -3,30 +3,55 @@
   "topic_id": "PRODUCTION.QUANTIZATION",
   "title": "Quantization & Mixed Precision",
   "parent": "PRODUCTION",
-  "status": "skeleton",
+  "status": "initial_intuition",
   "date_created": "2026-03-16",
-  "date_updated": "2026-03-16",
-  "summary": "Reduce numerical precision of weights and activations (float32 to int8/int4) for faster inference and smaller model size. Post-training quantization requires no retraining. Quantization-aware training fine-tunes with simulated low precision. Mixed precision: float16 forward/backward, float32 accumulation.",
+  "date_updated": "2026-03-17",
+  "summary": "Reduce numerical precision: float32 → float16/bfloat16 → int8 → int4. Less memory, faster compute, minimal quality loss. Mixed precision: compute in float16, accumulate in float32. Post-training quantization (PTQ) vs quantization-aware training (QAT).",
+
   "key_insights": [
-    "Post-training quantization (PTQ): quantize after training, no retraining needed. Easy but some accuracy loss.",
-    "Quantization-aware training (QAT): simulate quantization during training. Better accuracy, requires retraining.",
-    "Mixed precision training: float16 for most ops (2x memory savings), float32 for accumulation and LN (numerical stability)",
-    "INT8: 4x memory reduction, 2-4x speedup on modern hardware (tensor cores, VNNI)",
-    "INT4: 8x memory reduction, enables running large models on consumer GPUs (GPTQ, AWQ)",
-    "Key interaction with LayerNorm: LN epsilon must be larger in float16 to avoid numerical issues"
+    "float32: 4 bytes per param. float16: 2 bytes. int8: 1 byte. int4: 0.5 bytes. 7B model: 28GB → 14GB → 7GB → 3.5GB.",
+    "Mixed precision training: forward/backward in float16 (fast), weight updates in float32 (precise). Loss scaling prevents gradient underflow.",
+    "bfloat16 (Google): same exponent range as float32 (no overflow), reduced mantissa. Better for training than float16.",
+    "Post-training quantization (PTQ): train in float32, quantize afterward. Simple but some quality loss.",
+    "Quantization-aware training (QAT): simulate quantization during training. Model learns to be robust. Better quality, more effort.",
+    "GPTQ / AWQ / GGML: popular PTQ methods for LLMs. 4-bit quantization with minimal quality loss for inference."
   ],
+
   "mathematical_core": {
-    "quantize": "q = round(w / scale + zero_point), where scale = (w_max - w_min) / (2^bits - 1)",
-    "dequantize": "w_approx = scale * (q - zero_point)",
-    "error_bound": "max error per weight = scale / 2",
-    "mixed_precision": "Forward/backward in float16, optimizer state and accumulation in float32"
+    "linear_quantization": "$$q = \\text{round}\\left(\\frac{x - z}{s}\\right), \\quad \\hat{x} = s \\cdot q + z$$ where $s$ = scale, $z$ = zero point",
+    "scale": "$s = \\frac{x_{\\max} - x_{\\min}}{2^b - 1}$ for $b$-bit quantization",
+    "mixed_precision": "Forward: $y = f_{\\text{fp16}}(x)$. Loss: $L_{\\text{fp32}} = \\text{scale} \\cdot L_{\\text{fp16}}$. Gradients: fp16. Update: $\\theta_{\\text{fp32}} -= \\eta \\cdot g_{\\text{fp32}}$.",
+    "memory_savings": "7B params × 4 bytes = 28GB (fp32). × 2 bytes = 14GB (fp16). × 1 byte = 7GB (int8). × 0.5 = 3.5GB (int4)."
   },
-  "mathematical_depth": {"derivations": [], "status": "to be populated — quantization error analysis already in PRODUCTION.PRUNING"},
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Quantization error analysis",
+        "steps": [
+          {
+            "name": "Round-trip error",
+            "math": "$|x - \\hat{x}| \\leq s/2$ where $s$ = scale factor. Maximum error = half a quantization step."
+          },
+          {
+            "name": "Per-layer impact",
+            "math": "Error compounds through layers: $\\epsilon_{\\text{output}} \\approx \\sum_l \\|J_l\\| \\cdot \\epsilon_l$. Sensitive layers (attention, first/last) need higher precision."
+          },
+          {
+            "name": "Outlier problem",
+            "math": "If one weight is 100× larger than others: $s$ is large → all other weights lose precision. Solution: per-channel quantization or outlier handling (LLM.int8())."
+          }
+        ],
+        "consequence": "Quantization works because: (1) most weights cluster near zero, (2) networks are over-parameterized (can tolerate noise), (3) per-channel scales handle outliers."
+      }
+    ]
+  },
+
   "connections": {
-    "prerequisites": ["Trained model", "TRANSFORMER.LAYER_NORM — epsilon interaction with precision"],
-    "enables": ["Edge deployment", "Consumer GPU deployment", "Cost reduction"],
-    "related": ["PRODUCTION.PRUNING", "PRODUCTION.DISTILLATION"]
+    "prerequisites": ["FOUNDATIONS.GRADIENT_DESCENT — for QAT"],
+    "enables": [],
+    "related": ["PRODUCTION.PRUNING — both reduce model size", "PRODUCTION.DISTILLATION — can combine: distill then quantize"]
   },
   "artifacts": [],
-  "notes": []
+  "notes": ["Directly relevant to Anoop's local-first AI tool: Ollama models are typically GGUF-quantized (4-bit or 5-bit). Understanding quantization helps judge quality tradeoffs for local vs cloud routing."]
 }

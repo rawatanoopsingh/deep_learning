@@ -4,15 +4,15 @@
     "owner": "Anoop",
     "purpose": "Architecture innovation & application design",
     "schema_version": "1.1",
-    "schema_notes": "v1.1: KaTeX math notation ($..$ inline, $$...$$ display). Architecture SVGs with clickable blocks.",
-    "last_updated": "2026-03-16",
+    "schema_notes": "v1.1: KaTeX math ($..$ inline, $$...$$ display). All topics populated. Architecture SVGs.",
+    "last_updated": "2026-03-17",
     "total_topics": 35
   },
   "topics": {
-    "FOUNDATIONS.GRADIENT_DESCENT": {"title": "Gradient Descent & Backpropagation", "status": "skeleton", "summary": "The engine of learning. Gradients via chain rule, update parameters."},
-    "FOUNDATIONS.LOSS_FUNCTIONS": {"title": "Loss Functions & Training Objectives", "status": "skeleton", "summary": "CE, MSE, contrastive, KL. Loss choice = architectural decision."},
-    "FOUNDATIONS.REGULARIZATION": {"title": "Regularization & Generalization", "status": "skeleton", "summary": "Dropout, weight decay, L1/L2, early stopping. SGD noise."},
-    "FOUNDATIONS.EMBEDDINGS": {"title": "Embeddings & Representation Learning", "status": "skeleton", "summary": "Discrete inputs to dense vectors. Geometry encodes meaning."},
+    "FOUNDATIONS.GRADIENT_DESCENT": {"title": "Gradient Descent & Backpropagation", "status": "initial_intuition", "summary": "The engine of learning. Gradient flow determines trainability.", "has_math_depth": true, "math_depth_topics": ["Why gradients vanish", "Learning rate & loss landscape"]},
+    "FOUNDATIONS.LOSS_FUNCTIONS": {"title": "Loss Functions & Training Objectives", "status": "initial_intuition", "summary": "CE, MSE, contrastive, KL. Loss choice = architectural decision.", "has_math_depth": true, "math_depth_topics": ["CE gradient simplicity", "Temperature in contrastive loss", "KL asymmetry"]},
+    "FOUNDATIONS.REGULARIZATION": {"title": "Regularization & Generalization", "status": "initial_intuition", "summary": "Dropout, weight decay, L1/L2. SGD noise as implicit regularizer.", "has_math_depth": true, "math_depth_topics": ["L1 vs L2 sparsity", "Dropout as ensemble"]},
+    "FOUNDATIONS.EMBEDDINGS": {"title": "Embeddings & Representation Learning", "status": "initial_intuition", "summary": "Discrete inputs → dense vectors. Geometry encodes meaning.", "has_math_depth": true, "math_depth_topics": ["Distributional hypothesis", "Embedding norm and PE balance"]},
     "FOUNDATIONS.ACTIVATIONS": {"title": "Activation Functions", "status": "initial_intuition", "summary": "ReLU, GELU, Sigmoid, SwiGLU. Nonlinearity makes depth meaningful.", "has_math_depth": true, "math_depth_topics": ["Collapse theorem", "ReLU geometry", "GELU probabilistic", "Sigmoid saturation", "SwiGLU gating"]},
     "FOUNDATIONS.INDUCTIVE_BIAS": {"title": "Architecture as Inductive Bias", "status": "synthesized", "summary": "Architecture defines function family, constrains solutions, enables interpretability.", "has_math_depth": true},
     "FOUNDATIONS.BATCHING_SGD": {"title": "Batching & SGD", "status": "synthesized", "summary": "Parallelism + SGD validity + noise as regularizer.", "has_math_depth": true},
@@ -27,22 +27,22 @@
     "TRANSFORMER.ENCODER_DECODER": {"title": "Encoder-Decoder Structure", "status": "exploring", "summary": "Encoder (bidirectional) + Decoder (3 sub-layers). Encoder runs once.", "has_math_depth": true, "math_depth_topics": ["Parameter count", "KV-cache inference"]},
     "TRANSFORMER.VARIANTS": {"title": "Architecture Variants", "status": "covered", "summary": "Encoder-only / Decoder-only / Encoder-decoder.", "has_math_depth": true, "math_depth_topics": ["Bidirectional vs causal", "Parameter efficiency"]},
     "TRANSFORMER.TRAINING": {"title": "Training", "status": "covered", "summary": "Teacher forcing, CE loss, AdamW, warmup.", "has_math_depth": true, "math_depth_topics": ["AdamW decomposition", "Warmup necessity", "Teacher forcing"]},
-    "CNN.CONVOLUTION": {"title": "CNN Architecture", "status": "initial_intuition", "summary": "Learned FIR filters. Hierarchical composition. Builds correlations bottom-up.", "has_math_depth": true, "math_depth_topics": ["Toeplitz/im2col", "Cascade collapse", "Variance evolution", "Efficiency", "Basis functions"]},
-    "CNN.RESNET": {"title": "ResNet", "status": "skeleton", "summary": "Residual connections in CNNs. BN vs LN. Depthwise separable."},
-    "CNN.VIT": {"title": "Vision Transformer (ViT)", "status": "skeleton", "summary": "Patches as tokens. Transformer encoder on images."},
+    "CNN.CONVOLUTION": {"title": "CNN Architecture", "status": "initial_intuition", "summary": "Learned FIR filters. Hierarchical composition. Bottom-up correlations.", "has_math_depth": true, "math_depth_topics": ["Toeplitz/im2col", "Cascade collapse", "Variance evolution", "Efficiency", "Basis functions"]},
+    "CNN.RESNET": {"title": "ResNet & Deep CNNs", "status": "initial_intuition", "summary": "Residual connections in CNNs. BN vs LN. Bottleneck blocks. Depthwise separable.", "has_math_depth": true, "math_depth_topics": ["BN vs LN axis difference"]},
+    "CNN.VIT": {"title": "Vision Transformer (ViT)", "status": "initial_intuition", "summary": "Patches as tokens. Less bias + more data. Scales better than CNNs.", "has_math_depth": true, "math_depth_topics": ["CNN bias vs ViT scaling", "Compute cost comparison"]},
     "HYBRID.CNN_TRANSFORMER": {"title": "CNN + Transformer Hybrid", "status": "initial_intuition", "summary": "CNN local features → transformer global relationships."},
-    "AUTOENCODER.BASIC": {"title": "Autoencoders", "status": "skeleton", "summary": "Bottleneck compression. Anomaly detection."},
-    "AUTOENCODER.VAE": {"title": "VAE", "status": "skeleton", "summary": "Probabilistic bottleneck. Reparameterization. ELBO."},
-    "GAN.BASIC": {"title": "GANs", "status": "skeleton", "summary": "Generator vs discriminator. Mode collapse."},
-    "DIFFUSION.BASIC": {"title": "Diffusion Models", "status": "skeleton", "summary": "Noise prediction. Simple MSE. Stable training."},
-    "RNN.BASICS": {"title": "RNNs/LSTMs (Historical)", "status": "skeleton", "summary": "Sequential processing. Why transformers replaced them."},
-    "GNN.BASICS": {"title": "Graph Neural Networks", "status": "skeleton", "summary": "Message passing. L-hop neighborhoods."},
-    "GNN.GAT": {"title": "Graph Attention Networks", "status": "skeleton", "summary": "Attention on edges. Transformer = GAT on full graph."},
-    "MULTIMODAL.FUSION": {"title": "Multimodal Fusion", "status": "skeleton", "summary": "Early/late/cross-attention fusion."},
+    "AUTOENCODER.BASIC": {"title": "Autoencoders", "status": "initial_intuition", "summary": "Bottleneck compression. Reconstruction loss. Anomaly detection.", "has_math_depth": true, "math_depth_topics": ["Linear autoencoder = PCA"]},
+    "AUTOENCODER.VAE": {"title": "VAE", "status": "initial_intuition", "summary": "Probabilistic bottleneck. Reparameterization. ELBO.", "has_math_depth": true, "math_depth_topics": ["Reparameterization trick", "ELBO derivation"]},
+    "GAN.BASIC": {"title": "GANs", "status": "initial_intuition", "summary": "Generator vs discriminator minimax. Mode collapse. Wasserstein.", "has_math_depth": true, "math_depth_topics": ["GANs minimize JS divergence"]},
+    "DIFFUSION.BASIC": {"title": "Diffusion Models", "status": "initial_intuition", "summary": "Forward noising → reverse denoising. MSE loss. Stable training. Latent diffusion.", "has_math_depth": true, "math_depth_topics": ["Noise prediction = score matching", "Sampling speed / latent diffusion"]},
+    "RNN.BASICS": {"title": "RNNs/LSTMs (Historical)", "status": "initial_intuition", "summary": "Sequential processing. Why transformers replaced them. LSTM gates.", "has_math_depth": true, "math_depth_topics": ["LSTM gates and sigmoid", "Cell state as residual highway"]},
+    "GNN.BASICS": {"title": "Graph Neural Networks", "status": "initial_intuition", "summary": "Message passing. L-hop neighborhoods. GCN as spectral conv.", "has_math_depth": true, "math_depth_topics": ["GCN spectral convolution", "Transformer as GNN on complete graph"]},
+    "GNN.GAT": {"title": "Graph Attention Networks", "status": "initial_intuition", "summary": "Attention on graph edges. GAT vs transformer comparison.", "has_math_depth": true, "math_depth_topics": ["GAT vs Transformer structural comparison"]},
+    "MULTIMODAL.FUSION": {"title": "Multimodal Fusion", "status": "initial_intuition", "summary": "Early/late/cross-attention fusion. CLIP. Stable Diffusion conditioning.", "has_math_depth": true, "math_depth_topics": ["Rectangular cross-attention scores"]},
     "PRODUCTION.PRUNING": {"title": "Pruning & Compression", "status": "introduced", "summary": "L1 sparsity, structured pruning.", "has_math_depth": true, "math_depth_topics": ["L1 vs L2", "Quantization"]},
     "PRODUCTION.DISTILLATION": {"title": "Knowledge Distillation", "status": "introduced", "summary": "Teacher-student soft labels. Temperature.", "has_math_depth": true, "math_depth_topics": ["Soft vs hard labels", "T² correction", "When it helps"]},
-    "PRODUCTION.EFFICIENT_ATTENTION": {"title": "Efficient Attention", "status": "skeleton", "summary": "Sparse, linear, Flash Attention."},
-    "PRODUCTION.QUANTIZATION": {"title": "Quantization", "status": "skeleton", "summary": "Float32 → int8/int4. Mixed precision."}
+    "PRODUCTION.EFFICIENT_ATTENTION": {"title": "Efficient Attention", "status": "initial_intuition", "summary": "Sparse, linear, Flash Attention. KV-cache.", "has_math_depth": true, "math_depth_topics": ["Flash Attention IO analysis"]},
+    "PRODUCTION.QUANTIZATION": {"title": "Quantization", "status": "initial_intuition", "summary": "Float32 → int8/int4. Mixed precision. GPTQ/AWQ.", "has_math_depth": true, "math_depth_topics": ["Quantization error analysis"]}
   },
   "connections": [
     {"from": "FOUNDATIONS.GRADIENT_DESCENT", "to": "FOUNDATIONS.BATCHING_SGD", "type": "prerequisite"},
@@ -91,10 +91,9 @@
   "architecture_views": {
     "TRANSFORMER": {
       "diagrams": [
-        {"file": "artifacts/diagrams/system_overview.png", "description": "Level 0: System overview", "level": 0},
-        {"file": "artifacts/diagrams/encoder_block_detail.png", "description": "Level 1: Encoder block", "level": 1},
-        {"file": "artifacts/diagrams/decoder_block_detail.png", "description": "Level 2: Decoder block", "level": 2},
-        {"file": "artifacts/diagrams/transformer_N2_fully_expanded.svg", "description": "N=2 fully unrolled", "level": "expanded"}
+        {"file": "artifacts/diagrams/transformer_N2_fully_expanded.svg", "description": "N=2 fully unrolled", "level": "expanded"},
+        {"file": "artifacts/diagrams/encoder_block_level1_detail.svg", "description": "Level 1: Encoder block detail", "level": 1},
+        {"file": "artifacts/diagrams/decoder_block_level2_detail.svg", "description": "Level 2: Decoder block detail", "level": 2}
       ]
     },
     "CNN": {
@@ -109,7 +108,9 @@
       {"file": "artifacts/diagrams/encoder_block_detail.png", "topic": "TRANSFORMER.ENCODER_DECODER", "description": "Level 1: Encoder block"},
       {"file": "artifacts/diagrams/decoder_block_detail.png", "topic": "TRANSFORMER.ENCODER_DECODER", "description": "Level 2: Decoder block"},
       {"file": "artifacts/diagrams/transformer_N2_fully_expanded.svg", "topic": "TRANSFORMER.ENCODER_DECODER", "description": "N=2 fully unrolled"},
-      {"file": "artifacts/diagrams/cnn_architecture_clickable.svg", "topic": "CNN.CONVOLUTION", "description": "CNN Architecture — clickable components"}
+      {"file": "artifacts/diagrams/encoder_block_level1_detail.svg", "topic": "TRANSFORMER.ENCODER_DECODER", "description": "Encoder block detail SVG"},
+      {"file": "artifacts/diagrams/decoder_block_level2_detail.svg", "topic": "TRANSFORMER.ENCODER_DECODER", "description": "Decoder block detail SVG"},
+      {"file": "artifacts/diagrams/cnn_architecture_clickable.svg", "topic": "CNN.CONVOLUTION", "description": "CNN Architecture — clickable"}
     ],
     "docs": [
       {"file": "artifacts/docs/transformer_calculations.docx", "topic": "TRANSFORMER", "description": "Complete calculation flow, 14 steps"},

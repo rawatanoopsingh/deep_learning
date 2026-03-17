@@ -3,27 +3,55 @@
   "topic_id": "GNN.GAT",
   "title": "Graph Attention Networks (GAT)",
   "parent": "GNN",
-  "status": "skeleton",
+  "status": "initial_intuition",
   "date_created": "2026-03-16",
-  "date_updated": "2026-03-16",
-  "summary": "Apply attention mechanism to graph edges. The bridge between GNNs and transformers. Self-attention on a fully-connected graph IS standard transformer attention. Cross-attention between graph K/V and query Q IS the knowledge-grounded attention pattern.",
+  "date_updated": "2026-03-17",
+  "summary": "Apply attention mechanism to graph edges. Each node computes attention weights over its neighbors — not all neighbors contribute equally. Directly analogous to transformer self-attention, but only over graph neighbors instead of all tokens.",
+
   "key_insights": [
-    "Attention weight on edges: learned, not fixed by graph structure",
-    "Multi-head attention on graphs: same concept as transformer multi-head",
-    "Transformer = special case of GAT where the graph is fully connected",
-    "Cross-attention between graph K/V and query Q = knowledge-grounded attention"
+    "GCN: all neighbors contribute equally (normalized by degree). GAT: learn different weights per neighbor via attention.",
+    "Attention: $\\alpha_{ij} = \\text{softmax}_j(\\text{LeakyReLU}(a^\\top [W h_i \\| W h_j]))$. Learned query-key-like scoring.",
+    "Multi-head GAT: $K$ attention heads, concatenate or average outputs. Same idea as transformer multi-head.",
+    "Transformer self-attention = GAT where the graph is fully connected and attention uses dot-product instead of concat.",
+    "Sparse attention: GAT only computes attention over actual edges. $O(|E|)$ not $O(N^2)$. Efficient on sparse graphs.",
+    "Inductive: GAT generalizes to unseen nodes (attention weights depend on features, not node identity)."
   ],
+
   "mathematical_core": {
-    "attention": "alpha_vu = softmax_u(LeakyReLU(a^T[Wh_v || Wh_u]))",
-    "update": "h_v' = sigma(sum_{u in N(v)} alpha_vu * W * h_u)",
-    "multi_head": "h_v' = concat(head_1, ..., head_K) * W_O"
+    "attention_coeff": "$$e_{ij} = \\text{LeakyReLU}(\\vec{a}^\\top [W\\vec{h}_i \\| W\\vec{h}_j])$$",
+    "normalize": "$$\\alpha_{ij} = \\frac{\\exp(e_{ij})}{\\sum_{k \\in \\mathcal{N}(i)} \\exp(e_{ik})}$$",
+    "aggregate": "$$\\vec{h}_i' = \\sigma\\left(\\sum_{j \\in \\mathcal{N}(i)} \\alpha_{ij} W \\vec{h}_j\\right)$$",
+    "multi_head": "$$\\vec{h}_i' = \\|_{k=1}^{K} \\sigma\\left(\\sum_{j \\in \\mathcal{N}(i)} \\alpha_{ij}^k W^k \\vec{h}_j\\right)$$"
   },
-  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "GAT vs Transformer attention — structural comparison",
+        "steps": [
+          {
+            "name": "Transformer",
+            "math": "$\\alpha_{ij} = \\text{softmax}_j(Q_i K_j^\\top / \\sqrt{d_k})$. Dot-product attention. All-to-all ($N^2$ pairs)."
+          },
+          {
+            "name": "GAT",
+            "math": "$\\alpha_{ij} = \\text{softmax}_j(a^\\top [Wh_i \\| Wh_j])$. Concat attention. Only neighbors ($|E|$ pairs)."
+          },
+          {
+            "name": "Key differences",
+            "math": "Transformer: $O(N^2)$ compute, dynamic edges. GAT: $O(|E|)$ compute, fixed edges from graph. Transformer can discover any relationship; GAT is constrained to graph structure."
+          }
+        ],
+        "consequence": "GAT trades expressivity (fixed graph) for efficiency (sparse computation). Useful when graph structure encodes real constraints (molecules, social networks)."
+      }
+    ]
+  },
+
   "connections": {
-    "prerequisites": ["GNN.BASICS", "TRANSFORMER.SELF_ATTENTION"],
-    "enables": ["Knowledge-grounded transformers"],
-    "related": ["TRANSFORMER.CROSS_ATTENTION", "TRANSFORMER.MULTI_HEAD"]
+    "prerequisites": ["GNN.BASICS", "TRANSFORMER.SELF_ATTENTION — shared attention concept"],
+    "enables": ["MULTIMODAL.FUSION — graph attention for cross-modal reasoning"],
+    "related": ["TRANSFORMER.MULTI_HEAD — same multi-head concept"]
   },
   "artifacts": [],
-  "notes": ["Theoretical bridge for knowledge graph + cross-attention application idea"]
+  "notes": []
 }

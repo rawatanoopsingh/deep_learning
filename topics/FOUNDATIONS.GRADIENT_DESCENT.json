@@ -3,22 +3,92 @@
   "topic_id": "FOUNDATIONS.GRADIENT_DESCENT",
   "title": "Gradient Descent & Backpropagation",
   "parent": "FOUNDATIONS",
-  "status": "skeleton",
+  "status": "initial_intuition",
   "date_created": "2026-03-16",
-  "date_updated": "2026-03-16",
-  "summary": "The engine that drives all learning. Compute loss, compute gradients via chain rule (backprop), update parameters in the direction that reduces loss. Not the same as autograd implementation — the conceptual level matters for architecture design.",
-  "key_insights": [],
+  "date_updated": "2026-03-17",
+  "summary": "The engine of all learning. Compute loss, compute gradients via chain rule (backprop), update parameters to reduce loss. Gradient flow through the architecture determines trainability — this is why residuals, LayerNorm, and scaling all exist.",
+
+  "key_insights": [
+    "Gradient = direction of steepest increase. We go opposite: $\\theta_{t+1} = \\theta_t - \\eta \\nabla L$",
+    "Backprop = reverse-mode autodiff. Compute ALL gradients in ONE backward pass — cost ≈ 2× forward",
+    "Chain rule through depth: $\\frac{\\partial L}{\\partial \\theta_1} = \\frac{\\partial L}{\\partial y} \\cdot \\frac{\\partial y}{\\partial h_N} \\cdots \\frac{\\partial h_2}{\\partial h_1} \\cdot \\frac{\\partial h_1}{\\partial \\theta_1}$. Product of many terms → vanishing or exploding",
+    "Vanishing gradients killed deep networks before residuals. $\\prod_i \\|J_i\\| < 1$ each → product $\\to 0$ exponentially",
+    "Every architectural trick (residuals, LayerNorm, $1/\\sqrt{d_k}$, Xavier init) exists to keep gradients in a healthy range",
+    "Learning rate $\\eta$ is the most important hyperparameter. Too high = diverge, too low = stuck"
+  ],
+
   "mathematical_core": {
-    "update_rule": "θ_{t+1} = θ_t - η · ∇L(θ_t)",
-    "chain_rule": "∂L/∂θ = ∂L/∂y · ∂y/∂h · ∂h/∂θ (applied recursively through layers)",
-    "backprop": "Reverse-mode automatic differentiation — compute all gradients in one backward pass"
+    "update_rule": "$$\\theta_{t+1} = \\theta_t - \\eta \\cdot \\nabla_{\\theta} L(\\theta_t)$$",
+    "chain_rule": "$$\\frac{\\partial L}{\\partial \\theta} = \\frac{\\partial L}{\\partial y} \\cdot \\frac{\\partial y}{\\partial h} \\cdot \\frac{\\partial h}{\\partial \\theta}$$ applied recursively through layers",
+    "backprop_cost": "Forward: $O(P)$ FLOPs where $P$ = number of params. Backward: $\\approx 2 \\times O(P)$. Total training step: $\\approx 3 \\times$ forward."
   },
-  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Why gradients vanish in deep networks",
+        "steps": [
+          {
+            "name": "Chain rule through $N$ layers",
+            "math": "$$\\frac{\\partial L}{\\partial \\theta_1} = \\prod_{i=1}^{N} J_i \\cdot \\frac{\\partial L}{\\partial h_N}$$ where $J_i = \\frac{\\partial h_{i+1}}{\\partial h_i}$ is the Jacobian of layer $i$."
+          },
+          {
+            "name": "Sigmoid example",
+            "math": "$\\sigma'(x) = \\sigma(x)(1-\\sigma(x))$, max value $= 0.25$ at $x=0$. Through $N$ layers: $\\|\\text{gradient}\\| \\leq 0.25^N$. At $N=10$: $\\approx 10^{-6}$."
+          },
+          {
+            "name": "ReLU partially fixes this",
+            "math": "$\\text{ReLU}'(x) = 1$ for $x > 0$, $0$ for $x < 0$. Gradient is either 1 (preserved) or 0 (dead). No shrinkage, but dead neuron problem."
+          },
+          {
+            "name": "Residuals fully fix this",
+            "math": "$J_{\\text{residual}} = I + J_{\\text{sublayer}}$. Product always includes $I$ as leading term. Gradient cannot vanish completely."
+          }
+        ],
+        "consequence": "Vanishing gradients → sigmoid replaced by ReLU (2012) → residuals enabled very deep networks (2015) → transformers (2017) combine residuals + LN + scaling."
+      },
+      {
+        "title": "Learning rate and loss landscape geometry",
+        "steps": [
+          {
+            "name": "Second-order view",
+            "math": "$$L(\\theta + \\delta) \\approx L(\\theta) + \\nabla L^\\top \\delta + \\frac{1}{2} \\delta^\\top H \\delta$$ where $H$ is the Hessian. Optimal step: $\\delta^* = -H^{-1} \\nabla L$ (Newton's method)."
+          },
+          {
+            "name": "Why we don't use Newton's",
+            "math": "$H \\in \\mathbb{R}^{P \\times P}$. For GPT-3 ($P = 175B$): $H$ has $3 \\times 10^{22}$ entries. Impossible to compute or store."
+          },
+          {
+            "name": "Adam approximation",
+            "math": "Adam tracks running mean ($m$) and variance ($v$) of gradients. Update: $\\theta_{t+1} = \\theta_t - \\eta \\cdot m_t / (\\sqrt{v_t} + \\epsilon)$. Diagonal approximation of $H^{-1} \\nabla L$."
+          }
+        ],
+        "consequence": "Adam = cheap approximation to Newton's method. Works well in practice because loss landscapes have structure exploitable by diagonal preconditioning."
+      }
+    ]
+  },
+
+  "geometric_properties": [
+    "Loss landscape is high-dimensional and non-convex, but has exploitable structure (connected low-loss valleys)",
+    "Gradient direction is the best first-order move. Curvature (Hessian) tells you how far to go.",
+    "Saddle points are more common than local minima in high dimensions — gradient descent escapes them naturally"
+  ],
+  "statistical_properties": [
+    "Gradient norm $\\|\\nabla L\\|$ should decrease during training (approaching optimum)",
+    "Monitor gradient norm per layer — large discrepancies indicate vanishing/exploding",
+    "Gradient noise (from mini-batches) acts as regularizer — see FOUNDATIONS.BATCHING_SGD"
+  ],
+  "numerical_properties": [
+    "float16 gradients: values $< 6 \\times 10^{-8}$ underflow to zero. Loss scaling compensates.",
+    "Gradient accumulation: sum gradients over $K$ mini-batches before updating. Effective batch size = $K \\times B$.",
+    "Gradient clipping: if $\\|\\nabla L\\| > \\text{max\\_norm}$, scale down. Prevents exploding gradients in RNNs/early transformer training."
+  ],
+
   "connections": {
     "prerequisites": ["Calculus (partial derivatives)", "Linear algebra"],
-    "enables": ["FOUNDATIONS.BATCHING_SGD", "TRANSFORMER.TRAINING", "All training topics"],
-    "related": ["FOUNDATIONS.LOSS_FUNCTIONS"]
+    "enables": ["FOUNDATIONS.BATCHING_SGD", "TRANSFORMER.TRAINING"],
+    "related": ["FOUNDATIONS.LOSS_FUNCTIONS", "TRANSFORMER.RESIDUALS — gradient highway", "TRANSFORMER.LAYER_NORM — gradient magnitude control"]
   },
   "artifacts": [],
-  "notes": ["Anoop's stance: autograd internals are engine-level, not needed for architecture innovation. Conceptual understanding of gradient flow IS needed for designing trainable architectures."]
+  "notes": ["Autograd internals are engine-level, not needed for architecture innovation. Conceptual understanding of gradient flow IS needed for designing trainable architectures."]
 }

@@ -1,35 +1,71 @@
 {
   "schema_version": "1.1",
   "topic_id": "GNN.BASICS",
-  "title": "Graph Neural Networks — Message Passing & Aggregation",
+  "title": "Graph Neural Networks — Message Passing",
   "parent": "GNN",
-  "status": "skeleton",
+  "status": "initial_intuition",
   "date_created": "2026-03-16",
-  "date_updated": "2026-03-16",
-  "summary": "Neural networks that operate on graph-structured data (nodes + edges). Core idea: each node aggregates information from its neighbors (message passing), then updates its own representation. Repeated over L layers, each node's representation captures its L-hop neighborhood. Directly relevant to knowledge graph interest.",
+  "date_updated": "2026-03-17",
+  "summary": "Operate on graph-structured data (nodes + edges). Each node aggregates information from neighbors via message passing. $L$ layers = $L$-hop neighborhood. The graph structure IS the inductive bias — no spatial locality, no sequence order, just connectivity.",
+
   "key_insights": [
-    "Message passing: each node collects features from its neighbors, aggregates them (sum/mean/max), updates its own feature",
-    "L layers of message passing = each node 'sees' its L-hop neighborhood",
-    "Inductive bias: graph structure determines information flow (contrast: transformer = fully connected, CNN = grid)",
-    "GCN (Graph Convolutional Network): simplest form — normalized sum of neighbor features",
-    "GraphSAGE: learns to sample and aggregate from neighbors — scalable to large graphs",
-    "Connection to attention: Graph Attention Network (GAT) uses attention weights on edges — transformer attention on a graph"
+    "Input: node features $h_v^{(0)}$ + adjacency structure $\\mathcal{N}(v)$. Output: updated node features $h_v^{(L)}$.",
+    "Message passing: $h_v^{(l+1)} = \\text{UPDATE}(h_v^{(l)}, \\text{AGGREGATE}(\\{h_u^{(l)} : u \\in \\mathcal{N}(v)\\}))$",
+    "$L$ layers of message passing = each node sees its $L$-hop neighborhood. Like CNN receptive field growth, but on graphs.",
+    "Key difference from transformers: GNNs respect graph structure (only neighbors communicate). Transformer = GNN on FULLY CONNECTED graph.",
+    "Graph pooling: aggregate all node features → graph-level representation. Like Global Average Pool in CNNs.",
+    "Applications: molecular property prediction, social networks, traffic, chip design, knowledge graphs."
   ],
+
   "mathematical_core": {
-    "message_passing": "h_v^(l+1) = UPDATE(h_v^(l), AGGREGATE({h_u^(l) : u ∈ N(v)}))",
-    "gcn": "H^(l+1) = σ(D̃^{-½} Ã D̃^{-½} H^(l) W^(l)) — normalized adjacency × features × weights",
-    "gat": "α_{vu} = softmax_u(LeakyReLU(aᵀ[Wh_v || Wh_u])) — attention on edges"
+    "message_passing": "$$h_v^{(l+1)} = \\phi\\left(h_v^{(l)}, \\bigoplus_{u \\in \\mathcal{N}(v)} \\psi(h_v^{(l)}, h_u^{(l)}, e_{vu})\\right)$$",
+    "gcn": "$$H^{(l+1)} = \\sigma(\\tilde{D}^{-1/2} \\tilde{A} \\tilde{D}^{-1/2} H^{(l)} W^{(l)})$$ where $\\tilde{A} = A + I$ (add self-loops), $\\tilde{D}$ = degree matrix",
+    "aggregation": "$\\bigoplus$ can be: sum, mean, max. Choice affects what the model can distinguish.",
+    "readout": "Graph-level: $h_G = \\text{READOUT}(\\{h_v^{(L)}\\}) = \\sum_v h_v^{(L)}$ or attention-weighted sum"
   },
-  "mathematical_depth": {"derivations": [], "status": "to be populated"},
-  "connections": {
-    "prerequisites": ["FOUNDATIONS.EMBEDDINGS", "Graph theory basics (nodes, edges, adjacency)"],
-    "enables": ["Knowledge graph reasoning", "Molecular property prediction", "Social network analysis"],
-    "related": [
-      "TRANSFORMER.SELF_ATTENTION — self-attention is GNN on a fully-connected graph",
-      "TRANSFORMER.CROSS_ATTENTION — cross-attention between graph nodes and query = knowledge-grounded attention",
-      "GNN.GAT — attention mechanism applied to graph edges"
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "GCN as spectral convolution on graphs",
+        "steps": [
+          {
+            "name": "Graph Laplacian",
+            "math": "$L = D - A$. Eigendecomposition: $L = U \\Lambda U^\\top$. Eigenvectors = graph Fourier basis."
+          },
+          {
+            "name": "Spectral convolution",
+            "math": "Full spectral: $g_\\theta * x = U g_\\theta(\\Lambda) U^\\top x$. Cost: $O(N^2)$ and eigendecomposition."
+          },
+          {
+            "name": "GCN approximation",
+            "math": "ChebNet: approximate $g_\\theta(\\Lambda)$ with Chebyshev polynomials. GCN: first-order approximation → $\\tilde{A} H W$. Local, efficient, no eigendecomposition needed."
+          }
+        ],
+        "consequence": "GCN is a computationally efficient approximation to spectral graph convolution. Like how CNN kernels approximate spatial Fourier filters."
+      },
+      {
+        "title": "Transformer as GNN on fully connected graph",
+        "steps": [
+          {
+            "name": "GNN on complete graph",
+            "math": "$\\mathcal{N}(v) = \\text{all nodes}$. Every node aggregates from every other node."
+          },
+          {
+            "name": "Attention as edge weights",
+            "math": "Self-attention computes edge weights $\\alpha_{ij}$ dynamically: $\\alpha_{ij} = \\text{softmax}(Q_i K_j^\\top / \\sqrt{d_k})$. These ARE the message weights."
+          }
+        ],
+        "consequence": "Transformer = GNN with learned, dynamic, fully-connected edges. GNNs = transformers with sparse, fixed edges (from data)."
+      }
     ]
   },
+
+  "connections": {
+    "prerequisites": ["FOUNDATIONS.EMBEDDINGS — node features as embeddings", "Linear algebra (adjacency matrices)"],
+    "enables": ["GNN.GAT"],
+    "related": ["TRANSFORMER.SELF_ATTENTION — transformer = GNN on complete graph", "CNN.CONVOLUTION — spatial convolution = message passing on grid graph"]
+  },
   "artifacts": [],
-  "notes": ["Learning plan Week 8 topic. Directly connects to knowledge graph + cross-attention idea discussed during assessment."]
+  "notes": ["Directly relevant to Anoop's MCP + knowledge graph interests: graph-structured AI tools where nodes represent system components."]
 }

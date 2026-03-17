@@ -3,22 +3,89 @@
   "topic_id": "FOUNDATIONS.EMBEDDINGS",
   "title": "Embeddings & Representation Learning",
   "parent": "FOUNDATIONS",
-  "status": "skeleton",
+  "status": "initial_intuition",
   "date_created": "2026-03-16",
-  "date_updated": "2026-03-16",
-  "summary": "Mapping discrete or high-dimensional inputs to dense, learned vector spaces where geometry encodes meaning. Token embeddings, word2vec, sentence embeddings. The quality of the embedding geometry determines what downstream models can learn. Foundational to transformers, retrieval systems, and knowledge graphs.",
-  "key_insights": [],
+  "date_updated": "2026-03-17",
+  "summary": "Mapping discrete or high-dimensional inputs to dense learned vector spaces where geometry encodes meaning. The quality of embedding geometry determines what downstream models can learn. Foundational to transformers, retrieval, and knowledge graphs.",
+
+  "key_insights": [
+    "Embedding = lookup table $W_{\\text{embed}} \\in \\mathbb{R}^{V \\times d}$. Token ID → row of $W$. NOT a matrix multiply, just indexing.",
+    "Geometry IS meaning: similar items should have similar vectors. $\\cos(E_a, E_b)$ measures semantic similarity.",
+    "Word2Vec insight: $\\vec{\\text{king}} - \\vec{\\text{man}} + \\vec{\\text{woman}} \\approx \\vec{\\text{queen}}$. Linear algebra in embedding space = semantic algebra.",
+    "Embedding dimension $d$ = capacity. Too small: can't separate concepts. Too large: waste + overfitting.",
+    "In transformers, embedding and un-embedding matrices are often TIED: $W_{\\text{unembed}} = W_{\\text{embed}}^\\top$. Reduces params by $V \\times d$.",
+    "Embeddings are learned end-to-end via backprop. No separate training step needed (unlike Word2Vec)."
+  ],
+
   "mathematical_core": {
-    "lookup": "E = W_embed[token_id] — row lookup, not matrix multiply. W_embed ∈ [V, d_model]",
-    "similarity": "cos(E_a, E_b) = E_a · E_b / (||E_a|| · ||E_b||) — cosine similarity in embedding space",
-    "word2vec_insight": "king - man + woman ≈ queen — arithmetic in embedding space encodes semantic relationships"
+    "lookup": "$$E = W_{\\text{embed}}[\\text{token\\_id}] \\quad W_{\\text{embed}} \\in \\mathbb{R}^{V \\times d_{\\text{model}}}$$",
+    "similarity": "$$\\cos(E_a, E_b) = \\frac{E_a \\cdot E_b}{\\|E_a\\| \\|E_b\\|}$$",
+    "output_projection": "Logits $= h \\cdot W_{\\text{unembed}}$ where $W_{\\text{unembed}} \\in \\mathbb{R}^{d \\times V}$. If tied: $W_{\\text{unembed}} = W_{\\text{embed}}^\\top$.",
+    "param_count": "$V \\times d_{\\text{model}}$. For GPT-2: $50257 \\times 768 \\approx 38.6M$ params just for embeddings."
   },
-  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Why embeddings work — distributional hypothesis",
+        "steps": [
+          {
+            "name": "Distributional hypothesis",
+            "math": "Words appearing in similar contexts have similar meanings. Training on context prediction forces similar-context words to have similar embeddings."
+          },
+          {
+            "name": "Gradient flow through embedding",
+            "math": "$\\frac{\\partial L}{\\partial W_{\\text{embed}}[k]} = \\frac{\\partial L}{\\partial E_k}$ — only the row for the current token gets updated per step. Sparse gradient."
+          },
+          {
+            "name": "Weight tying saves parameters",
+            "math": "Without tying: $V \\times d$ (embed) + $d \\times V$ (unembed) = $2Vd$. With tying: $Vd$. 50% savings. Also acts as regularizer — forces input/output spaces to be coherent."
+          }
+        ],
+        "consequence": "Embeddings learn from co-occurrence patterns. Weight tying halves params and improves generalization by forcing input and output representations to share structure."
+      },
+      {
+        "title": "Embedding norm and its role",
+        "steps": [
+          {
+            "name": "At initialization",
+            "math": "Xavier: $W_{ij} \\sim \\mathcal{N}(0, 1/d)$. Expected norm: $\\|E\\| = \\sqrt{d \\cdot 1/d} = 1$."
+          },
+          {
+            "name": "After training",
+            "math": "Frequent tokens develop larger norms (more gradient updates). $\\|E_{\\text{frequent}}\\| > \\|E_{\\text{rare}}\\|$. This is a signal, not a bug."
+          },
+          {
+            "name": "Interaction with PE",
+            "math": "$X = E + \\text{PE}$. If $\\|\\text{PE}\\| \\gg \\|E\\|$: position dominates content. Some models scale: $X = \\sqrt{d} \\cdot E + \\text{PE}$."
+          }
+        ],
+        "consequence": "Embedding norm encodes token frequency/importance. Balance with PE magnitude matters for early training dynamics."
+      }
+    ]
+  },
+
+  "geometric_properties": [
+    "Embedding space should NOT collapse — all vectors pointing in the same direction = no information",
+    "Monitor: average pairwise cosine similarity. Should be low (diverse) not high (collapsed).",
+    "Analogy structure: $\\vec{a} - \\vec{b} + \\vec{c} \\approx \\vec{d}$ works when relationships are linear in embedding space"
+  ],
+  "statistical_properties": [
+    "Embedding gradient is sparse: only the accessed row gets updated. Effective learning rate higher for frequent tokens.",
+    "Rare tokens have undertrained embeddings — may need special treatment (subword tokenization helps).",
+    "Monitor embedding drift: $\\|E_t - E_{t-1}\\|$ per epoch. Should stabilize."
+  ],
+  "numerical_properties": [
+    "Embedding lookup: $O(d)$ per token (copy one row). Negligible compute, significant memory.",
+    "Memory: $V \\times d \\times 4$ bytes (float32). GPT-2: $\\approx 154$MB just for embeddings.",
+    "Gradient accumulation for rare tokens: may need higher learning rate or separate optimizer."
+  ],
+
   "connections": {
-    "prerequisites": ["Linear algebra (vector spaces)"],
-    "enables": ["TRANSFORMER.SELF_ATTENTION — operates on embedded vectors", "TRANSFORMER.POSITIONAL_ENCODING — added to content embeddings"],
-    "related": ["TRANSFORMER.VARIANTS — encoder-only models as embedding generators", "FOUNDATIONS.INDUCTIVE_BIAS — embedding geometry is learned structure"]
+    "prerequisites": ["Linear algebra (vector spaces, dot products)"],
+    "enables": ["TRANSFORMER.SELF_ATTENTION", "TRANSFORMER.POSITIONAL_ENCODING"],
+    "related": ["FOUNDATIONS.INDUCTIVE_BIAS — embedding geometry is learned structure", "GNN.BASICS — graph node embeddings"]
   },
   "artifacts": [],
-  "notes": ["Connects to knowledge graph interest: graph node embeddings serve as K/V in cross-attention"]
+  "notes": ["Graph node embeddings as K/V in cross-attention connects to knowledge graph + transformer hybrid designs."]
 }

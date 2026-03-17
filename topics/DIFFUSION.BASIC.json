@@ -3,30 +3,69 @@
   "topic_id": "DIFFUSION.BASIC",
   "title": "Diffusion Models",
   "parent": "DIFFUSION",
-  "status": "skeleton",
+  "status": "initial_intuition",
   "date_created": "2026-03-16",
-  "date_updated": "2026-03-16",
-  "summary": "Learn to reverse a gradual noising process. Forward process: add Gaussian noise step by step until data becomes pure noise. Reverse process: learn a neural network to denoise step by step. Generation: start from pure noise, iteratively denoise. Now dominant for image generation (DALL-E, Stable Diffusion, Midjourney).",
+  "date_updated": "2026-03-17",
+  "summary": "Forward process: gradually add Gaussian noise until data becomes pure noise ($T$ steps). Reverse process: learn a neural network to predict and remove the noise at each step. Simple MSE loss, stable training, high-quality generation. Powers Stable Diffusion, DALL-E, Midjourney.",
+
   "key_insights": [
-    "Forward: x_t = √(α_t)·x_{t-1} + √(1-α_t)·ε — gradually add noise over T steps",
-    "Reverse: learn p(x_{t-1}|x_t) — predict slightly less noisy version from current noisy version",
-    "In practice: train a network ε_θ(x_t, t) to predict the NOISE that was added, not the clean image",
-    "Loss: simple MSE between predicted noise and actual noise — much simpler than GAN training",
-    "Transformer connection: the denoising network is often a U-Net or a transformer (DiT = Diffusion Transformer)",
-    "Stable training (unlike GANs), high quality output, controllable generation"
+    "Forward: $x_t = \\sqrt{\\bar\\alpha_t} \\, x_0 + \\sqrt{1-\\bar\\alpha_t} \\, \\epsilon$. Add noise gradually over $T$ steps. At $t = T$: pure Gaussian noise.",
+    "Reverse: network $\\epsilon_\\theta(x_t, t)$ predicts the noise $\\epsilon$ that was added. Simple MSE loss: $L = \\|\\epsilon - \\epsilon_\\theta(x_t, t)\\|^2$.",
+    "Sampling: start from $x_T \\sim \\mathcal{N}(0, I)$, iteratively denoise: $x_{t-1} = f(x_t, \\epsilon_\\theta(x_t, t))$.",
+    "Training is trivially stable (just MSE regression). No adversarial dynamics, no mode collapse, no posterior collapse.",
+    "Quality matches or exceeds GANs. Diversity is natural (different noise samples → different outputs).",
+    "The neural network (usually a U-Net or transformer) is conditioned on timestep $t$ — same network for all noise levels."
   ],
+
   "mathematical_core": {
-    "forward": "q(x_t|x_{t-1}) = N(√α_t · x_{t-1}, (1-α_t)I)",
-    "reverse": "p_θ(x_{t-1}|x_t) = N(μ_θ(x_t, t), σ²_t I)",
-    "loss": "L = E_{t,x_0,ε}[||ε - ε_θ(x_t, t)||²] — predict the noise",
-    "sampling": "Start x_T ~ N(0,I), iteratively apply reverse process T times to get x_0"
+    "forward": "$$q(x_t | x_0) = \\mathcal{N}(x_t; \\sqrt{\\bar\\alpha_t} \\, x_0, (1-\\bar\\alpha_t) I)$$",
+    "noise_schedule": "$\\bar\\alpha_t = \\prod_{s=1}^t (1-\\beta_s)$ where $\\beta_s$ = noise added at step $s$",
+    "loss": "$$L = \\mathbb{E}_{t, x_0, \\epsilon}\\left[\\|\\epsilon - \\epsilon_\\theta(x_t, t)\\|^2\\right]$$",
+    "sampling": "$x_{t-1} = \\frac{1}{\\sqrt{\\alpha_t}}\\left(x_t - \\frac{\\beta_t}{\\sqrt{1-\\bar\\alpha_t}} \\epsilon_\\theta(x_t, t)\\right) + \\sigma_t z$"
   },
-  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Why predicting noise works — connection to score matching",
+        "steps": [
+          {
+            "name": "Score function",
+            "math": "$\\nabla_{x_t} \\log q(x_t) = -\\frac{\\epsilon}{\\sqrt{1-\\bar\\alpha_t}}$. The score (gradient of log-density) points toward data from noise."
+          },
+          {
+            "name": "Predicting noise = estimating score",
+            "math": "$\\epsilon_\\theta(x_t, t) \\approx -\\sqrt{1-\\bar\\alpha_t} \\nabla_{x_t} \\log q(x_t)$. The network learns the direction back to clean data."
+          }
+        ],
+        "consequence": "Noise prediction, score matching, and denoising are mathematically equivalent views. The simplicity of MSE loss hides deep theory."
+      },
+      {
+        "title": "Sampling speed — the main practical limitation",
+        "steps": [
+          {
+            "name": "Standard DDPM",
+            "math": "$T = 1000$ steps. Each step = one full network forward pass. Generation is ~1000× slower than GANs."
+          },
+          {
+            "name": "DDIM (fast sampling)",
+            "math": "Deterministic sampling with larger steps. 50-100 steps instead of 1000. Quality is nearly as good."
+          },
+          {
+            "name": "Latent diffusion (Stable Diffusion)",
+            "math": "Diffuse in latent space of a VAE, not pixel space. $64 \\times 64$ latent instead of $512 \\times 512$ pixels. Much faster."
+          }
+        ],
+        "consequence": "Latent diffusion = VAE encoder (compress) + diffusion in latent space (generate) + VAE decoder (upsample). Best of both worlds."
+      }
+    ]
+  },
+
   "connections": {
-    "prerequisites": ["FOUNDATIONS.LOSS_FUNCTIONS", "Gaussian distributions"],
-    "enables": ["Image generation", "Text-to-image", "Video generation"],
-    "related": ["GAN.BASIC — predecessor for generation tasks", "AUTOENCODER.VAE — shares the latent space concept (Stable Diffusion uses a VAE encoder)"]
+    "prerequisites": ["FOUNDATIONS.LOSS_FUNCTIONS", "FOUNDATIONS.GRADIENT_DESCENT"],
+    "enables": [],
+    "related": ["AUTOENCODER.VAE — latent diffusion uses VAE", "GAN.BASIC — alternative generative approach"]
   },
   "artifacts": [],
-  "notes": ["Learning plan Week 7 topic"]
+  "notes": ["Latent diffusion (Stable Diffusion) = VAE + diffusion + cross-attention conditioning (text→image). Cross-attention from TRANSFORMER.CROSS_ATTENTION directly applies here."]
 }

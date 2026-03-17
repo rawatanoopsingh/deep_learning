@@ -3,37 +3,56 @@
   "topic_id": "MULTIMODAL.FUSION",
   "title": "Multimodal Fusion Architectures",
   "parent": "MULTIMODAL",
-  "status": "skeleton",
+  "status": "initial_intuition",
   "date_created": "2026-03-16",
-  "date_updated": "2026-03-16",
-  "summary": "Combining different data types (text + image, time series + text, sensor + reference) into a unified model. Three main strategies: early fusion (concatenate inputs), late fusion (separate encoders, merge outputs), and cross-attention fusion (separate encoders, cross-attend between them). Cross-attention fusion is the most powerful and connects to your core application interest.",
+  "date_updated": "2026-03-17",
+  "summary": "Combining information from different modalities (text, image, audio, graph). Three strategies: early fusion (concatenate inputs), late fusion (combine outputs), cross-attention fusion (one modality queries another). Cross-attention is the dominant approach in modern systems.",
+
   "key_insights": [
-    "Early fusion: concatenate raw inputs before the model. Simple but forces a single tokenization for different data types.",
-    "Late fusion: separate encoders produce separate representations, combined at the end (concat, sum, MLP). Each modality gets its own encoder but limited interaction.",
-    "Cross-attention fusion: separate encoders, cross-attention between them. Most flexible — each modality can query the other. This is the dual-encoder pattern from your assessment discussion.",
-    "Bidirectional cross-attention: modality A attends to B AND B attends to A. Most powerful but most expensive.",
-    "Asymmetric cross-attention: one modality queries the other (not vice versa). Appropriate when one modality is the 'question' and the other is the 'knowledge'."
+    "Early fusion: concatenate modality features before processing. Simple but forces same architecture for all modalities.",
+    "Late fusion: process each modality independently, combine at the end. Easy to build but no cross-modal interaction during processing.",
+    "Cross-attention fusion: one modality provides Q, the other provides K/V. Rich interaction. Used in Stable Diffusion (text→image), Flamingo (image→text).",
+    "Dual-encoder pattern: separate encoders per modality, align in shared embedding space. Used in CLIP (image-text matching).",
+    "Contrastive pre-training (CLIP): maximize similarity of matching image-text pairs, minimize for non-matching. Creates aligned multimodal space.",
+    "OQ1 connects here: should residual bypass cross-attention in dual-encoder? Bypass = refine modality representation. No bypass = full replacement with cross-modal info."
   ],
+
   "mathematical_core": {
-    "early_fusion": "x = concat(embed_A(a), embed_B(b)) then model(x)",
-    "late_fusion": "h = combine(encoder_A(a), encoder_B(b)) where combine = concat or add or MLP",
-    "cross_attention_fusion": "h_A' = CrossAttn(Q=h_A, K=h_B, V=h_B) — A attends to B",
-    "bidirectional": "h_A' = CrossAttn(Q=h_A, K=h_B, V=h_B), h_B' = CrossAttn(Q=h_B, K=h_A, V=h_A)"
+    "early_fusion": "$z = f([x_{\\text{text}} ; x_{\\text{image}}])$ — concatenate, then shared encoder",
+    "late_fusion": "$z = g(f_{\\text{text}}(x_{\\text{text}}), f_{\\text{image}}(x_{\\text{image}}))$ — separate encoders, combine predictions",
+    "cross_attention": "$$\\text{CrossAttn}(Q_{\\text{text}}, K_{\\text{image}}, V_{\\text{image}}) = \\text{softmax}\\left(\\frac{Q_{\\text{text}} K_{\\text{image}}^\\top}{\\sqrt{d_k}}\\right) V_{\\text{image}}$$",
+    "clip_loss": "$$L = -\\frac{1}{2N}\\sum_i \\left[\\log \\frac{e^{\\text{sim}(t_i, v_i)/\\tau}}{\\sum_j e^{\\text{sim}(t_i, v_j)/\\tau}} + \\log \\frac{e^{\\text{sim}(v_i, t_i)/\\tau}}{\\sum_j e^{\\text{sim}(v_i, t_j)/\\tau}}\\right]$$"
   },
-  "mathematical_depth": {"derivations": [], "status": "to be populated"},
-  "connections": {
-    "prerequisites": ["TRANSFORMER.CROSS_ATTENTION", "TRANSFORMER.ENCODER_DECODER", "FOUNDATIONS.EMBEDDINGS"],
-    "enables": ["Domain-specific multimodal products", "Knowledge-grounded systems"],
-    "related": [
-      "TRANSFORMER.CROSS_ATTENTION — cross-attention fusion uses this mechanism",
-      "TRANSFORMER.VARIANTS — architecture selection per modality",
-      "CNN.VIT — image modality encoder",
-      "GNN.GAT — graph modality encoder"
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Cross-attention score matrix is rectangular — key difference from self-attention",
+        "steps": [
+          {
+            "name": "Self-attention",
+            "math": "Score matrix $\\in \\mathbb{R}^{n \\times n}$. Square. Each position attends to all others in same modality."
+          },
+          {
+            "name": "Cross-attention",
+            "math": "Score matrix $\\in \\mathbb{R}^{n_{\\text{text}} \\times n_{\\text{image}}}$. Rectangular. Text tokens query image patches."
+          },
+          {
+            "name": "Asymmetry",
+            "math": "Text word 'dog' can attend to image patch containing dog. But image patch doesn't directly query text. Direction matters — who provides Q controls the output shape."
+          }
+        ],
+        "consequence": "Cross-attention output has the shape/length of the Q source. Text-to-image cross-attention outputs text-length sequence enriched with visual info."
+      }
     ]
   },
-  "open_questions": [
-    "OQ1 (from TRANSFORMER.RESIDUALS): Should residual bypass cross-attention in dual-encoder? Directly relevant here — determines how much each modality preserves its own representation vs absorbs the other."
-  ],
+
+  "connections": {
+    "prerequisites": ["TRANSFORMER.CROSS_ATTENTION", "FOUNDATIONS.EMBEDDINGS"],
+    "enables": [],
+    "related": ["HYBRID.CNN_TRANSFORMER — CNN features as K/V", "DIFFUSION.BASIC — text conditioning via cross-attention", "FOUNDATIONS.LOSS_FUNCTIONS — contrastive loss"]
+  },
+  "open_questions": ["OQ1: Should residual bypass cross-attention in dual-encoder? Bypass = refinement, no bypass = replacement."],
   "artifacts": [],
-  "notes": ["This is the theoretical home for the dual-encoder cross-attention application idea discussed extensively during assessment. The sensor + knowledge base, query + documents, and data analysis patterns all live here."]
+  "notes": ["Stable Diffusion = VAE (compress) + diffusion (generate in latent space) + cross-attention (text conditions image generation). The cross-attention from TRANSFORMER.CROSS_ATTENTION is the exact mechanism."]
 }

@@ -3,29 +3,56 @@
   "topic_id": "PRODUCTION.EFFICIENT_ATTENTION",
   "title": "Efficient Attention Variants",
   "parent": "PRODUCTION",
-  "status": "skeleton",
+  "status": "initial_intuition",
   "date_created": "2026-03-16",
-  "date_updated": "2026-03-16",
-  "summary": "O(n^2) self-attention is the bottleneck for long sequences. Sparse attention (attend to subset of positions), linear attention (kernel approximation to avoid n^2), Flash Attention (hardware-aware exact attention that is faster in practice). Critical for production deployment with long inputs.",
+  "date_updated": "2026-03-17",
+  "summary": "The $O(n^2)$ attention bottleneck limits sequence length. Solutions: sparse attention (attend to subset), linear attention (kernel trick removes softmax), Flash Attention (IO-aware implementation, exact but fast). Flash Attention is the dominant practical solution.",
+
   "key_insights": [
-    "Standard attention: O(n^2 * d_k) — quadratic in sequence length",
-    "Sparse attention (Longformer, BigBird): attend to local window + global tokens. O(n * w) where w = window size",
-    "Linear attention (Performer, Linformer): approximate softmax(QK^T) via kernel trick. O(n * d_k)",
-    "Flash Attention: not a different algorithm — exact standard attention but with tiling/recomputation to minimize GPU memory transfers. 2-4x faster in practice",
-    "For long sequences (n > 4096), some form of efficient attention is required for practical deployment"
+    "Standard attention: $O(n^2 d)$ compute, $O(n^2)$ memory for score matrix. At $n = 8192$: 67M entries per head per layer.",
+    "Sparse attention: only compute attention for a subset of positions. Fixed patterns (local window + global tokens) or learned.",
+    "Linear attention: replace $\\text{softmax}(QK^\\top)V$ with $\\phi(Q)(\\phi(K)^\\top V)$. Associativity trick: $O(nd^2)$ instead of $O(n^2 d)$. But quality drops.",
+    "Flash Attention: exact standard attention, but reorders computation to minimize HBM reads/writes. ~2-4× faster, uses $O(n)$ memory via tiling.",
+    "Flash Attention insight: the bottleneck is memory bandwidth, not FLOPs. GPU SRAM is fast but small. Tile the computation to stay in SRAM.",
+    "KV-cache: at inference, cache K/V from previous tokens. New token only computes one Q row. Reduces autoregressive cost from $O(n^2)$ to $O(n)$ per token."
   ],
+
   "mathematical_core": {
-    "standard": "O(n^2 * d_k) compute, O(n^2) memory for attention matrix",
-    "sparse": "O(n * w * d_k) where w = local window size + number of global tokens",
-    "linear": "Attention(Q,K,V) approx phi(Q) * (phi(K)^T * V) — reorder to avoid n^2 matrix. O(n * d_k^2)",
-    "flash": "Exact standard attention. Tiled computation avoids materializing full n^2 matrix in HBM. Same result, faster execution."
+    "standard": "$O(n^2 d)$ compute, $O(n^2)$ memory",
+    "sparse_local": "Window of $w$ neighbors: $O(nwd)$ compute. Longformer: local + global tokens.",
+    "linear": "$\\text{Attn}(Q,K,V) = \\phi(Q)(\\phi(K)^\\top V)$. Compute $\\phi(K)^\\top V \\in \\mathbb{R}^{d \\times d}$ first, then multiply by $\\phi(Q)$. $O(nd^2)$.",
+    "flash_attention": "Same $O(n^2 d)$ FLOPs as standard, but $O(n)$ memory and ~2-4× wall-clock speedup via tiling.",
+    "kv_cache": "Inference: cache $K_{1:t}, V_{1:t}$. Token $t+1$: compute $Q_{t+1}$, append $K_{t+1}, V_{t+1}$ to cache. Attention cost: $O(td)$ not $O(t^2 d)$."
   },
-  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Flash Attention — IO complexity analysis",
+        "steps": [
+          {
+            "name": "Standard attention IO",
+            "math": "Write full $n \\times n$ score matrix to HBM, read it back for softmax, write result. HBM reads/writes: $O(n^2)$."
+          },
+          {
+            "name": "Flash Attention tiling",
+            "math": "Process $Q, K, V$ in blocks that fit in SRAM. Compute partial softmax per block, combine using online softmax trick. Never materialize full $n \\times n$ matrix."
+          },
+          {
+            "name": "Result",
+            "math": "HBM reads/writes: $O(n^2 d / M)$ where $M$ = SRAM size. Since $M \\gg d$: much fewer memory accesses. Same FLOPs, fewer memory ops → faster."
+          }
+        ],
+        "consequence": "Flash Attention is the dominant implementation. It's exact (no approximation), faster, and uses less memory. Practically eliminates the need for approximate attention methods."
+      }
+    ]
+  },
+
   "connections": {
     "prerequisites": ["TRANSFORMER.SELF_ATTENTION"],
-    "enables": ["Long-context applications", "Production deployment with latency constraints"],
-    "related": ["PRODUCTION.PRUNING — complementary optimization", "PRODUCTION.DISTILLATION"]
+    "enables": [],
+    "related": ["TRANSFORMER.MASKING — causal mask integrates with Flash Attention", "PRODUCTION.QUANTIZATION — quantized attention further reduces memory"]
   },
   "artifacts": [],
-  "notes": ["Learning plan Week 4/7 topic. Relevant when sequence length exceeds ~4096 tokens."]
+  "notes": ["Flash Attention makes the $O(n^2)$ concern less acute for sequences up to ~32K. Beyond that: sparse or hybrid approaches still needed."]
 }

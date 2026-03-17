@@ -3,24 +3,100 @@
   "topic_id": "FOUNDATIONS.LOSS_FUNCTIONS",
   "title": "Loss Functions & Training Objectives",
   "parent": "FOUNDATIONS",
-  "status": "skeleton",
+  "status": "initial_intuition",
   "date_created": "2026-03-16",
-  "date_updated": "2026-03-16",
-  "summary": "The loss function defines what 'correct' means. Cross-entropy for classification/generation, MSE for regression, contrastive for similarity, reconstruction for autoencoders. Choice of loss is an architectural decision — it determines the output layer shape and what the model optimizes for.",
-  "key_insights": [],
+  "date_updated": "2026-03-17",
+  "summary": "Loss defines what 'correct' means. Cross-entropy for classification/generation, MSE for regression, contrastive for similarity. Choice of loss is an architectural decision — it determines output layer shape and what the model optimizes for.",
+
+  "key_insights": [
+    "Loss choice = implicit architectural decision. CE needs softmax output layer, MSE needs linear, contrastive needs paired inputs.",
+    "Cross-entropy = forward KL divergence: $\\text{CE}(p, q) = H(p) + D_{KL}(p \\| q)$. Minimizing CE = matching distributions.",
+    "CE gradient w.r.t. logits is beautifully simple: $\\nabla_{z_i} \\text{CE} = q_i - y_i$ (predicted minus target). No second derivatives.",
+    "MSE penalizes large errors quadratically — sensitive to outliers. MAE (L1) is robust but not differentiable at 0.",
+    "Contrastive loss: learn representations by pushing similar pairs together, dissimilar apart. Temperature $\\tau$ controls sharpness.",
+    "KL divergence is asymmetric: $D_{KL}(p\\|q) \\neq D_{KL}(q\\|p)$. Forward KL = mode-covering, reverse KL = mode-seeking."
+  ],
+
   "mathematical_core": {
-    "cross_entropy": "L = -Σ y_i log(q_i) — classification, language modeling",
-    "mse": "L = (1/n) Σ (ŷ_i - y_i)² — regression, reconstruction",
-    "contrastive": "L = -log(exp(sim(a,b⁺)/τ) / Σ exp(sim(a,b)/τ)) — similarity learning",
-    "kl_divergence": "D_KL(p||q) = Σ p(x) log(p(x)/q(x)) — distribution matching",
-    "connection": "Cross-entropy minimization = forward KL divergence minimization (from FOUNDATIONS.INDUCTIVE_BIAS)"
+    "cross_entropy": "$$\\text{CE}(y, q) = -\\sum_i y_i \\log q_i$$ where $y$ = one-hot target, $q$ = softmax output. For language modeling: $\\text{CE} = -\\log q_{\\text{correct\\_token}}$.",
+    "mse": "$$\\text{MSE} = \\frac{1}{n}\\sum_i (\\hat{y}_i - y_i)^2$$",
+    "contrastive": "$$L = -\\log \\frac{e^{\\text{sim}(a, b^+)/\\tau}}{\\sum_j e^{\\text{sim}(a, b_j)/\\tau}}$$ — InfoNCE / NT-Xent",
+    "kl_divergence": "$$D_{KL}(p\\|q) = \\sum_x p(x) \\log \\frac{p(x)}{q(x)}$$",
+    "perplexity": "$\\text{PPL} = e^{\\text{CE}}$ — interpretable: 'how many tokens is the model confused between'"
   },
-  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "CE gradient simplicity — why softmax + CE is the standard pairing",
+        "steps": [
+          {
+            "name": "Softmax output",
+            "math": "$q_i = e^{z_i} / \\sum_j e^{z_j}$ where $z$ = logits"
+          },
+          {
+            "name": "CE loss",
+            "math": "$L = -\\sum_i y_i \\log q_i = -\\log q_k$ (where $k$ = correct class)"
+          },
+          {
+            "name": "Gradient w.r.t. logits",
+            "math": "$$\\frac{\\partial L}{\\partial z_i} = q_i - y_i$$ For correct class: $q_k - 1$ (push up). For wrong classes: $q_i - 0 = q_i$ (push down)."
+          }
+        ],
+        "consequence": "Gradient is simply (prediction − target). No saturation, no vanishing. This is why CE+softmax is universal for classification."
+      },
+      {
+        "title": "Temperature in contrastive loss",
+        "steps": [
+          {
+            "name": "Effect of $\\tau$",
+            "math": "Small $\\tau$: $e^{\\text{sim}/\\tau}$ amplifies differences → hard negatives dominate. Large $\\tau$: all negatives contribute equally."
+          },
+          {
+            "name": "Connection to distillation",
+            "math": "Same $\\tau$ appears in knowledge distillation: $q_i = e^{z_i/\\tau} / \\sum_j e^{z_j/\\tau}$. Higher $\\tau$ = softer distribution = more information per sample."
+          }
+        ],
+        "consequence": "Temperature is a universal knob: controls how peaked vs uniform the target/output distribution is. Appears in attention ($1/\\sqrt{d_k}$), contrastive, distillation."
+      },
+      {
+        "title": "Why KL divergence is asymmetric — practical consequences",
+        "steps": [
+          {
+            "name": "Forward KL: $D_{KL}(p\\|q)$",
+            "math": "$q$ must cover everywhere $p > 0$. If $p(x) > 0$ but $q(x) \\approx 0$: $p \\log(p/q) \\to \\infty$. Mode-covering: $q$ spreads out."
+          },
+          {
+            "name": "Reverse KL: $D_{KL}(q\\|p)$",
+            "math": "$q$ can ignore modes of $p$. If $q(x) > 0$ but $p(x) \\approx 0$: $q \\log(q/p) \\to \\infty$. Mode-seeking: $q$ concentrates."
+          }
+        ],
+        "consequence": "Standard training uses forward KL (CE). VAE uses reverse KL (ELBO). GANs implicitly optimize JS divergence. Choice affects whether model hedges (forward) or commits (reverse)."
+      }
+    ]
+  },
+
+  "geometric_properties": [
+    "CE loss surface is convex w.r.t. softmax outputs (but not w.r.t. parameters)",
+    "MSE loss surface is a paraboloid in output space — symmetric, single minimum",
+    "Contrastive loss creates a hypersphere of embeddings where similar items cluster"
+  ],
+  "statistical_properties": [
+    "CE on balanced dataset: random model gives $\\text{CE} = \\log V$ (perplexity = $V$)",
+    "Training CE should decrease monotonically. Val CE turning up = overfitting.",
+    "Label smoothing: replace one-hot $y_k = 1$ with $y_k = 1 - \\epsilon$, others $= \\epsilon/(V-1)$. Prevents overconfident logits."
+  ],
+  "numerical_properties": [
+    "$\\log(0) = -\\infty$. Always add $\\epsilon$: $\\log(q_i + 10^{-8})$.",
+    "LogSumExp trick: $\\log \\sum e^{z_i} = z_{\\max} + \\log \\sum e^{z_i - z_{\\max}}$ prevents overflow.",
+    "float16: CE values > 65504 overflow. Use loss scaling for mixed precision."
+  ],
+
   "connections": {
-    "prerequisites": ["Probability basics", "FOUNDATIONS.INDUCTIVE_BIAS"],
-    "enables": ["TRANSFORMER.TRAINING", "CNN.TRAINING", "AUTOENCODER — reconstruction loss", "GAN — adversarial loss"],
-    "related": ["PRODUCTION.DISTILLATION — uses KL divergence on soft labels"]
+    "prerequisites": ["Probability basics", "FOUNDATIONS.GRADIENT_DESCENT"],
+    "enables": ["TRANSFORMER.TRAINING", "AUTOENCODER.BASIC", "GAN.BASIC"],
+    "related": ["PRODUCTION.DISTILLATION — soft CE with temperature", "FOUNDATIONS.INDUCTIVE_BIAS — loss choice as prior"]
   },
   "artifacts": [],
-  "notes": ["Custom loss functions for specific business objectives is a key skill for application design"]
+  "notes": ["Custom loss functions for specific business objectives is a key skill for application design."]
 }

@@ -3,27 +3,88 @@
   "topic_id": "CNN.VIT",
   "title": "Vision Transformer (ViT)",
   "parent": "CNN",
-  "status": "skeleton",
+  "status": "initial_intuition",
   "date_created": "2026-03-16",
-  "date_updated": "2026-03-16",
-  "summary": "Replaced convolutions with self-attention for image processing. Image split into patches (16×16), each patch treated as a token with a linear embedding. Standard transformer encoder applied. Showed that with enough data, transformers outperform CNNs on vision — less inductive bias compensated by more data.",
+  "date_updated": "2026-03-17",
+  "summary": "Apply standard transformer encoder directly to images by splitting into patches (tokens). Less inductive bias than CNNs (no locality, no translation equivariance built in) → needs more data to match, but scales better with compute.",
+
   "key_insights": [
-    "Tokenization: split image into fixed-size patches → flatten → linear projection to d_model. Patches = tokens.",
-    "Position embedding is learned (not sine/cosine) — 2D position info for image patches",
-    "[CLS] token prepended for classification output (same as BERT)",
-    "Key result: CNNs have strong local bias (good for small data), ViT has weak bias (needs large data but achieves higher ceiling)",
-    "Directly connects to tokenization decisions for non-language data (your sensor/tabular interest)"
+    "Image → split into $P \\times P$ patches → flatten each to vector → linear projection → sequence of tokens",
+    "Standard transformer encoder on patch tokens. No convolutions at all in the original design.",
+    "Less bias + more data beats more bias + less data. ViT needs ~300M images (JFT) to match ResNet. With enough data, it surpasses.",
+    "Patch size = tradeoff. Small patches = long sequence ($O(n^2)$ attention cost). Large patches = lose fine detail.",
+    "CLS token: prepend a learnable classification token. Its output representation is used for classification.",
+    "Position embeddings are LEARNED (not sinusoidal). 2D structure must be learned from data, not hard-coded."
   ],
+
   "mathematical_core": {
-    "patch_embedding": "Image [H,W,C] → patches [N, P²·C] → linear projection [N, d_model]. N = HW/P² patches.",
-    "architecture": "Standard transformer encoder (same blocks as TRANSFORMER.ENCODER_DECODER encoder side)"
+    "patchify": "Image $\\in \\mathbb{R}^{H \\times W \\times C}$ → $N = HW/P^2$ patches, each $\\in \\mathbb{R}^{P^2 C}$",
+    "projection": "$$z_0 = [x_{\\text{cls}}; \\; x_1 E; \\; x_2 E; \\ldots; x_N E] + E_{\\text{pos}}$$ $E \\in \\mathbb{R}^{(P^2 C) \\times d}$, $E_{\\text{pos}} \\in \\mathbb{R}^{(N+1) \\times d}$",
+    "sequence_length": "$N = (224/16)^2 = 196$ patches for standard ViT-Base (224×224 image, 16×16 patches)",
+    "encoder": "Standard transformer encoder (LN → Multi-Head Attn → residual → LN → FFN → residual) × $L$ layers"
   },
-  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "CNN inductive bias vs ViT — what's gained and lost",
+        "steps": [
+          {
+            "name": "CNN biases",
+            "math": "Locality: each neuron sees only $k \\times k$ neighborhood. Translation equivariance: same kernel everywhere. Hierarchy: built by stacking."
+          },
+          {
+            "name": "ViT has none of these",
+            "math": "Every patch attends to every other patch from layer 1. No locality constraint. Position must be learned. Hierarchy must emerge from training, not architecture."
+          },
+          {
+            "name": "Scaling behavior",
+            "math": "CNNs plateau — adding more data or compute gives diminishing returns (bias limits the function family). ViT keeps improving — less bias means the function family is larger."
+          }
+        ],
+        "consequence": "Inductive bias = sample efficiency. No bias = compute efficiency at scale. The crossover point: ~100M+ images. Below that, CNNs win."
+      },
+      {
+        "title": "Compute cost comparison",
+        "steps": [
+          {
+            "name": "ViT attention",
+            "math": "$O(N^2 d) = O((HW/P^2)^2 d)$. For 224×224, P=16: $O(196^2 \\cdot 768) \\approx 30M$ per head per layer."
+          },
+          {
+            "name": "ResNet conv",
+            "math": "$O(k^2 C_{\\text{in}} C_{\\text{out}} H W)$. Early layers: $O(9 \\cdot 64 \\cdot 64 \\cdot 56 \\cdot 56) \\approx 116M$."
+          },
+          {
+            "name": "Key difference",
+            "math": "ViT cost is quadratic in image resolution ($H^2 W^2 / P^4$). CNN cost is linear ($HW$). High-res images: CNN is much cheaper."
+          }
+        ],
+        "consequence": "ViT is expensive for high-resolution images. Hybrid approaches (CNN stem + transformer) give best of both worlds."
+      }
+    ]
+  },
+
+  "geometric_properties": [
+    "Each patch token starts with only local information. Self-attention progressively creates global features.",
+    "Attention maps in early layers often resemble convolution kernels (locality emerges from data).",
+    "CLS token attention pattern: learns to aggregate from informative patches."
+  ],
+  "statistical_properties": [
+    "ViT-Base: 86M params. ViT-Large: 307M. ViT-Huge: 632M.",
+    "Pre-training dataset size matters enormously: ViT underperforms ResNet on ImageNet-1K alone.",
+    "With JFT-300M pre-training: ViT-H achieves 88.6% ImageNet top-1 (vs ResNet-152: 78.3%)."
+  ],
+  "numerical_properties": [
+    "Patch size $P = 16$ is the standard. $P = 14$ or $P = 8$ give better accuracy but $4\\times$ or $16\\times$ longer sequences.",
+    "Memory: attention matrix is $[B, h, N, N]$. $N = 196$ is manageable. $N = 3136$ ($P = 4$) is not."
+  ],
+
   "connections": {
-    "prerequisites": ["CNN.CONVOLUTION", "TRANSFORMER.SELF_ATTENTION", "TRANSFORMER.POSITIONAL_ENCODING"],
-    "enables": ["Multimodal architectures (image + text)"],
-    "related": ["TRANSFORMER.VARIANTS — ViT is encoder-only transformer for vision", "FOUNDATIONS.INDUCTIVE_BIAS — less bias + more data vs more bias + less data tradeoff"]
+    "prerequisites": ["CNN.RESNET", "TRANSFORMER.SELF_ATTENTION", "TRANSFORMER.POSITIONAL_ENCODING"],
+    "enables": [],
+    "related": ["HYBRID.CNN_TRANSFORMER — CNN stem + transformer body", "FOUNDATIONS.INDUCTIVE_BIAS — less bias = needs more data"]
   },
   "artifacts": [],
-  "notes": ["Learning plan Week 5 topic. Tokenization strategy for images directly parallels tokenization decisions for time series and tabular data."]
+  "notes": ["Natural bridge topic between CNN and Transformer families. Key design question: how much inductive bias to bake in vs learn from data."]
 }

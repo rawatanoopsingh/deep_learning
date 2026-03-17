@@ -3,29 +3,69 @@
   "topic_id": "AUTOENCODER.VAE",
   "title": "Variational Autoencoders (VAE)",
   "parent": "AUTOENCODER",
-  "status": "skeleton",
+  "status": "initial_intuition",
   "date_created": "2026-03-16",
-  "date_updated": "2026-03-16",
-  "summary": "Adds a probabilistic twist to autoencoders: the bottleneck is a distribution (mean + variance), not a point. Enables generation of new samples by sampling from the learned distribution. The loss combines reconstruction + KL divergence to the prior. Bridges autoencoders and generative models.",
+  "date_updated": "2026-03-17",
+  "summary": "Probabilistic autoencoder. Encoder outputs distribution parameters ($\\mu, \\sigma$), not a point. Sample from this distribution via reparameterization trick. Loss = reconstruction + KL divergence. Enables generation by sampling from the learned latent space.",
+
   "key_insights": [
-    "Encoder outputs μ and σ (mean and variance of a Gaussian), not a single point z",
-    "z is sampled: z = μ + σ · ε where ε ~ N(0,1) — the 'reparameterization trick' enables gradient flow through sampling",
-    "Loss = reconstruction + β · KL(q(z|x) || p(z)) — forces the learned distribution to stay close to a prior (standard normal)",
-    "Can generate new data by sampling z ~ N(0,I) and decoding — the generative capability",
-    "Latent space is smooth and continuous (unlike basic autoencoders which can have gaps)"
+    "Standard autoencoder: $z = f(x)$ is a point. VAE: $z \\sim \\mathcal{N}(\\mu(x), \\sigma(x)^2)$ is a distribution.",
+    "Reparameterization trick: $z = \\mu + \\sigma \\odot \\epsilon$ where $\\epsilon \\sim \\mathcal{N}(0, I)$. Makes sampling differentiable → gradients flow.",
+    "ELBO loss: $L = \\text{reconstruction} + \\beta \\cdot D_{KL}(q(z|x) \\| p(z))$. Balances fidelity vs latent space structure.",
+    "KL term pushes $q(z|x)$ toward prior $\\mathcal{N}(0, I)$. Without it: latent space has gaps (can't sample new points).",
+    "$\\beta$-VAE: increase $\\beta > 1$ to force more disentangled latent dimensions (each dim captures one factor of variation).",
+    "Generation: sample $z \\sim \\mathcal{N}(0, I)$, decode. Unlike autoencoder, the latent space is smooth and structured."
   ],
+
   "mathematical_core": {
-    "encoder": "q(z|x) = N(μ(x), σ²(x)) — encoder outputs distribution parameters",
-    "reparameterization": "z = μ + σ ⊙ ε, ε ~ N(0,I) — enables backprop through sampling",
-    "loss": "L = E_q[log p(x|z)] - KL(q(z|x) || p(z)) — ELBO (evidence lower bound)",
-    "kl_gaussian": "KL(N(μ,σ²) || N(0,1)) = -½ Σ(1 + log σ² - μ² - σ²)"
+    "encoder": "$q_\\phi(z|x) = \\mathcal{N}(\\mu_\\phi(x), \\sigma_\\phi(x)^2 I)$",
+    "reparameterization": "$z = \\mu_\\phi(x) + \\sigma_\\phi(x) \\odot \\epsilon, \\quad \\epsilon \\sim \\mathcal{N}(0, I)$",
+    "elbo": "$$L = \\underbrace{\\mathbb{E}_{q}[-\\log p_\\theta(x|z)]}_{\\text{reconstruction}} + \\underbrace{D_{KL}(q_\\phi(z|x) \\| p(z))}_{\\text{regularization}}$$",
+    "kl_closed_form": "$$D_{KL} = -\\frac{1}{2}\\sum_j (1 + \\log \\sigma_j^2 - \\mu_j^2 - \\sigma_j^2)$$ (Gaussian prior, closed form)"
   },
-  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Reparameterization trick — why it's necessary",
+        "steps": [
+          {
+            "name": "The problem",
+            "math": "$z \\sim q_\\phi(z|x)$. Sampling is NOT differentiable — $\\partial z / \\partial \\phi$ is undefined. Can't backprop through random sampling."
+          },
+          {
+            "name": "The trick",
+            "math": "Rewrite: $z = \\mu_\\phi(x) + \\sigma_\\phi(x) \\odot \\epsilon$. Now $z$ is a deterministic function of $\\phi$ (plus fixed noise $\\epsilon$). $\\partial z / \\partial \\mu = I$, $\\partial z / \\partial \\sigma = \\epsilon$."
+          }
+        ],
+        "consequence": "Gradients flow through the sampling operation. The randomness is in $\\epsilon$ (which doesn't depend on $\\phi$), not in the parameters."
+      },
+      {
+        "title": "ELBO derivation — why this loss maximizes data likelihood",
+        "steps": [
+          {
+            "name": "Start with log-likelihood",
+            "math": "$\\log p(x) = \\log \\int p(x|z) p(z) dz$. Intractable for complex decoders."
+          },
+          {
+            "name": "Introduce variational distribution",
+            "math": "$\\log p(x) \\geq \\mathbb{E}_{q(z|x)}[\\log p(x|z)] - D_{KL}(q(z|x) \\| p(z))$. This is the ELBO (Evidence Lower BOund)."
+          },
+          {
+            "name": "Gap",
+            "math": "$\\log p(x) - \\text{ELBO} = D_{KL}(q(z|x) \\| p(z|x)) \\geq 0$. ELBO is tight when $q$ matches the true posterior."
+          }
+        ],
+        "consequence": "Maximizing ELBO = maximizing a lower bound on data log-likelihood. Better $q$ (encoder) → tighter bound → better model."
+      }
+    ]
+  },
+
   "connections": {
-    "prerequisites": ["AUTOENCODER.BASIC", "FOUNDATIONS.LOSS_FUNCTIONS — KL divergence"],
-    "enables": ["Generative modeling", "Latent space interpolation"],
-    "related": ["GAN.BASIC — alternative generative approach", "DIFFUSION.BASIC — modern alternative", "FOUNDATIONS.INDUCTIVE_BIAS — VAE's Gaussian assumption is an inductive bias"]
+    "prerequisites": ["AUTOENCODER.BASIC", "FOUNDATIONS.LOSS_FUNCTIONS"],
+    "enables": [],
+    "related": ["DIFFUSION.BASIC — both are latent-variable generative models", "FOUNDATIONS.LOSS_FUNCTIONS — KL divergence"]
   },
   "artifacts": [],
-  "notes": ["Learning plan Week 6 topic"]
+  "notes": []
 }

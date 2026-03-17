@@ -3,29 +3,51 @@
   "topic_id": "GAN.BASIC",
   "title": "Generative Adversarial Networks (GANs)",
   "parent": "GAN",
-  "status": "skeleton",
+  "status": "initial_intuition",
   "date_created": "2026-03-16",
-  "date_updated": "2026-03-16",
-  "summary": "Two networks trained adversarially: Generator creates fake data, Discriminator distinguishes real from fake. The competition drives both to improve. Training is notoriously unstable (mode collapse, oscillation). Architectural innovations (DCGAN, StyleGAN, Wasserstein GAN) address stability.",
+  "date_updated": "2026-03-17",
+  "summary": "Two networks in competition: Generator creates fake samples, Discriminator distinguishes real from fake. Minimax game converges (ideally) when Generator produces samples indistinguishable from real data. Sharp outputs but unstable training.",
+
   "key_insights": [
-    "Minimax game: Generator minimizes, Discriminator maximizes V(D,G) = E[log D(x)] + E[log(1-D(G(z)))]",
-    "Generator never sees real data directly — learns only through discriminator's feedback",
-    "Mode collapse: generator produces limited variety (finds one thing that fools discriminator and repeats it)",
-    "Wasserstein GAN: replace JS divergence with Earth Mover distance — smoother gradients, more stable training",
-    "GANs produce very sharp outputs (vs VAEs which tend to be blurry) because adversarial loss penalizes unrealism"
+    "Generator $G$: noise $z \\to$ fake sample. Discriminator $D$: sample $\\to$ real/fake probability.",
+    "Minimax game: $\\min_G \\max_D \\; \\mathbb{E}[\\log D(x)] + \\mathbb{E}[\\log(1 - D(G(z)))]$",
+    "At equilibrium: $D(x) = 0.5$ everywhere (can't tell real from fake). $G$ has learned the data distribution.",
+    "Mode collapse: $G$ learns to produce only a few samples that fool $D$. Ignores diversity. Major practical problem.",
+    "Training is UNSTABLE: $G$ and $D$ must be balanced. If $D$ is too strong: $G$ gets zero gradient. If $D$ is too weak: $G$ gets no signal.",
+    "Wasserstein GAN (WGAN): replace JS divergence with Wasserstein distance. Smoother gradients, more stable training."
   ],
+
   "mathematical_core": {
-    "objective": "min_G max_D V(D,G) = E_x[log D(x)] + E_z[log(1-D(G(z)))]",
-    "generator": "G: z → x̂, maps random noise z ~ N(0,I) to synthetic data",
-    "discriminator": "D: x → [0,1], probability that input is real",
-    "nash_equilibrium": "Optimal: D(x) = 0.5 for all x (can't tell real from fake), G distribution matches real data"
+    "objective": "$$\\min_G \\max_D \\; V(D, G) = \\mathbb{E}_{x \\sim p_{\\text{data}}}[\\log D(x)] + \\mathbb{E}_{z \\sim p_z}[\\log(1 - D(G(z)))]$$",
+    "optimal_D": "$$D^*(x) = \\frac{p_{\\text{data}}(x)}{p_{\\text{data}}(x) + p_g(x)}$$",
+    "at_equilibrium": "$p_g = p_{\\text{data}}$ and $D^*(x) = 1/2$ everywhere",
+    "wasserstein": "$$W(p, q) = \\inf_{\\gamma \\in \\Pi(p,q)} \\mathbb{E}_{(x,y) \\sim \\gamma}[\\|x - y\\|]$$ Earth mover's distance. Provides gradients even when distributions don't overlap."
   },
-  "mathematical_depth": {"derivations": [], "status": "to be populated"},
+
+  "mathematical_depth": {
+    "derivations": [
+      {
+        "title": "Why GANs implicitly minimize JS divergence",
+        "steps": [
+          {
+            "name": "Substitute optimal $D^*$",
+            "math": "$V(D^*, G) = \\mathbb{E}[\\log \\frac{p_{\\text{data}}}{p_{\\text{data}} + p_g}] + \\mathbb{E}[\\log \\frac{p_g}{p_{\\text{data}} + p_g}]$"
+          },
+          {
+            "name": "Simplify",
+            "math": "$= -\\log 4 + 2 \\cdot D_{JS}(p_{\\text{data}} \\| p_g)$ where $D_{JS} = \\frac{1}{2}D_{KL}(p\\|m) + \\frac{1}{2}D_{KL}(q\\|m)$, $m = (p+q)/2$"
+          }
+        ],
+        "consequence": "GAN training = minimizing Jensen-Shannon divergence. Problem: when $p_{\\text{data}}$ and $p_g$ don't overlap, $D_{JS}$ is constant → zero gradient for $G$. This is why WGAN uses Wasserstein distance instead."
+      }
+    ]
+  },
+
   "connections": {
     "prerequisites": ["FOUNDATIONS.LOSS_FUNCTIONS", "FOUNDATIONS.GRADIENT_DESCENT"],
-    "enables": ["Image generation", "Data augmentation", "Domain adaptation"],
-    "related": ["AUTOENCODER.VAE — alternative generative approach", "DIFFUSION.BASIC — modern replacement for many GAN applications"]
+    "enables": [],
+    "related": ["DIFFUSION.BASIC — alternative generative approach, more stable", "AUTOENCODER.VAE — different generative model, blurrier but stable"]
   },
   "artifacts": [],
-  "notes": ["Learning plan Week 7 topic"]
+  "notes": ["GANs historically important but largely superseded by diffusion models for image generation. Still relevant for style transfer and domain adaptation."]
 }
