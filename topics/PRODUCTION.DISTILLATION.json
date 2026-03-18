@@ -5,23 +5,23 @@
   "parent": "PRODUCTION",
   "status": "introduced",
   "date_created": "2026-03-15",
-  "date_updated": "2026-03-15",
+  "date_updated": "2026-03-17",
 
-  "summary": "Train smaller student to mimic larger teacher's soft output distributions. Temperature T softens teacher outputs to reveal inter-class structure. Compresses the function, not the weights.",
+  "summary": "Train smaller student to mimic larger teacher's soft output distributions. Temperature $T$ softens teacher outputs to reveal inter-class structure. Compresses the function, not the weights.",
 
   "key_insights": [
     "Teacher's soft outputs (e.g., 'cat' 0.7, 'dog' 0.2, 'pet' 0.1) richer than hard labels ('cat')",
     "Student trained on teacher's soft outputs via KL divergence + standard CE on hard labels",
-    "Temperature T softens distribution: softmax(logits/T) — higher T = more informative",
+    "Temperature $T$ softens distribution: $\\text{softmax}(z/T)$ — higher $T$ = more informative",
     "Student architecture can differ completely from teacher",
     "Compresses the function (input→output mapping), not the weight structure",
     "Key for edge deployment and cost reduction"
   ],
 
   "mathematical_core": {
-    "soft_labels": "P_teacher = softmax(logits_teacher / T)",
-    "student_loss": "L = α · T² · KL(P_teacher || P_student) + (1-α) · CE(y_true, P_student)",
-    "temperature": "T > 1 softens distributions, revealing inter-class relationships"
+    "soft_labels": "$$P^T_{\\text{teacher}} = \\text{softmax}(z_{\\text{teacher}} / T)$$",
+    "student_loss": "$$L = \\alpha \\cdot T^2 \\cdot D_{KL}(P^T_{\\text{teacher}} \\| P^T_{\\text{student}}) + (1-\\alpha) \\cdot \\text{CE}(y, P^1_{\\text{student}})$$",
+    "temperature": "$T > 1$ softens distributions, revealing inter-class relationships. $T = 1$: standard softmax."
   },
 
   "mathematical_depth": {
@@ -31,69 +31,67 @@
         "steps": [
           {
             "name": "Hard label",
-            "math": "y = [0, 0, 1, 0, ...] — one-hot. Information content: log(V) bits (which class). No information about relationships between classes."
+            "math": "$y = [0, 0, 1, 0, \\ldots]$ — one-hot. Information: $\\log V$ bits (which class). No inter-class relationships."
           },
           {
             "name": "Soft label from teacher",
-            "math": "P = [0.01, 0.05, 0.70, 0.15, 0.09, ...]. Information: not just 'class 3' but also 'class 4 is somewhat similar (0.15), class 5 less so (0.09), class 1 is very different (0.01)'. This encodes the teacher's learned similarity structure."
+            "math": "$P = [0.01, 0.05, 0.70, 0.15, 0.09, \\ldots]$. Encodes: 'class 3, but class 4 is similar (0.15), class 1 is very different (0.01)'. Teacher's learned similarity structure."
           },
           {
             "name": "Information bound",
-            "math": "Entropy of soft labels H(P) > 0 = H(one-hot). The soft distribution has higher entropy = more information per training example. Student learns from fewer examples because each example teaches more."
+            "math": "$H(P_{\\text{soft}}) > 0 = H(\\text{one-hot})$. Higher entropy = more information per example. Student learns from fewer examples."
           }
         ],
-        "consequence": "Soft labels transfer the teacher's learned metric over the output space. The student doesn't just learn 'what' but also 'what else is similar' — a richer training signal."
+        "consequence": "Soft labels transfer the teacher's learned metric over the output space — not just 'what' but 'what else is similar'."
       },
       {
-        "title": "Temperature scaling — why T² appears in the loss",
+        "title": "Temperature scaling — why $T^2$ appears in the loss",
         "steps": [
           {
             "name": "Softmax with temperature",
-            "math": "P_i = e^{z_i/T} / Σ_j e^{z_j/T}. As T→∞: P → uniform (1/V). As T→0: P → one-hot. T=1: standard softmax."
+            "math": "$P_i = e^{z_i/T} / \\sum_j e^{z_j/T}$. As $T \\to \\infty$: $P \\to$ uniform. As $T \\to 0$: $P \\to$ one-hot."
           },
           {
             "name": "Gradient magnitudes",
-            "math": "∂KL/∂z_student scales as 1/T² (because both teacher and student softmax are divided by T). Without compensation, gradients from distillation loss vanish for large T."
+            "math": "$\\partial D_{KL} / \\partial z_{\\text{student}}$ scales as $1/T^2$ (both softmaxes divided by $T$). Without compensation: distillation gradients vanish for large $T$."
           },
           {
-            "name": "T² correction",
-            "math": "Multiply distillation loss by T² to restore gradient magnitude. L = α · T² · KL(P_T_teacher || P_T_student) + (1-α) · CE(y, P_1_student). The T² exactly compensates the 1/T² gradient shrinkage."
+            "name": "$T^2$ correction",
+            "math": "$$L = \\alpha \\cdot T^2 \\cdot D_{KL}(P^T_{\\text{teacher}} \\| P^T_{\\text{student}}) + (1-\\alpha) \\cdot \\text{CE}(y, P^1_{\\text{student}})$$ The $T^2$ exactly compensates the $1/T^2$ gradient shrinkage."
           }
         ],
-        "consequence": "The T² factor is not arbitrary — it's a gradient normalization. Without it, the distillation signal becomes negligible for T >> 1, and the student only learns from hard labels."
+        "consequence": "$T^2$ is gradient normalization, not arbitrary. Without it, the distillation signal becomes negligible for $T \\gg 1$."
       },
       {
         "title": "When distillation outperforms training from scratch",
-        "math": "Student trained from scratch: learns from N examples, each providing ~log(V) bits (hard labels). Student via distillation: learns from N examples, each providing ~H(P_teacher) bits (soft labels). Effective dataset size ratio: H(P_teacher)/log(V). For V=50000 and teacher entropy ≈ 5 bits: ratio ≈ 5/16.6 ≈ 0.3. BUT the 5 bits are more 'useful' bits (similarity structure vs just class identity).",
-        "consequence": "Distillation is most beneficial when: (1) teacher is much larger than student, (2) output space is large (many classes), (3) classes have meaningful similarity structure the teacher has learned."
+        "math": "From scratch: $N$ examples $\\times \\log V$ bits each. Via distillation: $N$ examples $\\times H(P_{\\text{teacher}})$ bits. For $V = 50000$, teacher entropy $\\approx 5$ bits: $5/16.6 \\approx 0.3$ ratio. But those 5 bits encode similarity structure — more useful than class identity alone.",
+        "consequence": "Most beneficial when: (1) teacher much larger than student, (2) large output space $V$, (3) classes have meaningful similarity structure."
       }
     ]
   },
 
   "geometric_properties": [
     "Teacher's soft labels encode a learned metric over the output space",
-    "Distillation transfers this metric to the student — student's embedding space inherits teacher's similarity structure",
-    "Monitor: cosine similarity between teacher and student embeddings for same input — should be high after distillation"
+    "Student's embedding space inherits teacher's similarity structure",
+    "Monitor: cosine similarity between teacher/student embeddings — should be high"
   ],
   "statistical_properties": [
-    "Temperature T controls the entropy of the teaching signal",
-    "Typical T: 2-20. Higher T = softer, more informative but noisier signal",
-    "α (mixing weight) typically 0.5-0.9 — more weight on distillation loss than hard labels"
+    "Temperature $T$ controls entropy of teaching signal",
+    "Typical $T$: 2–20. Higher = softer, more informative but noisier",
+    "$\\alpha$ (mixing weight) typically 0.5–0.9 — more weight on distillation than hard labels"
   ],
   "numerical_properties": [
-    "Distillation requires running teacher inference on all training data — one-time cost",
-    "Can pre-compute teacher logits and cache them — saves re-running teacher",
-    "Student training cost ≈ same as training from scratch (same dataset size, smaller model)"
+    "Requires running teacher inference on all training data — one-time cost",
+    "Can pre-compute and cache teacher logits",
+    "Student training cost $\\approx$ same as from scratch (same data, smaller model)"
   ],
 
   "connections": {
-    "prerequisites": ["Trained teacher model", "KL divergence", "Cross-entropy loss", "Softmax temperature"],
+    "prerequisites": ["FOUNDATIONS.LOSS_FUNCTIONS", "FOUNDATIONS.GRADIENT_DESCENT"],
     "enables": ["Edge deployment", "Cost-effective inference"],
-    "related": ["PRODUCTION.PRUNING", "FOUNDATIONS.INDUCTIVE_BIAS — student can use different architecture than teacher"]
+    "related": ["PRODUCTION.PRUNING", "PRODUCTION.QUANTIZATION", "FOUNDATIONS.INDUCTIVE_BIAS"]
   },
-
-  "application_relevance": "Positioning against GPT-4: 'too expensive and slow' solved by distilling into a task-specific smaller architecture at fraction of cost.",
-
+  "application_relevance": "Distill large cloud model into task-specific smaller model at fraction of cost. Directly relevant to Anoop's local-first AI routing: distill cloud-quality into Ollama-sized models for specific tasks.",
   "artifacts": [],
   "notes": []
 }
