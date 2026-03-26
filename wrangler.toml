@@ -1,5 +1,6 @@
 name = "dl-kg"
+main = "sw.js"
 compatibility_date = "2026-03-26"
 
-[pages]
-build_output_dir = "./"
+[assets]
+directory = "./"
