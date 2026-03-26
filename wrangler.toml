@@ -1,6 +1,4 @@
 name = "dl-kg"
-main = "sw.js"
+main = "./sw.js"
+assets = "./"
 compatibility_date = "2026-03-26"
-
-[assets]
-directory = "./"
